@@ -16,22 +16,19 @@ const NOTION_DB_IDS = {
 // ==================== NOTION ====================
 
 async function fetchHRKnowledge(query) {
-  if (!query || !NOTION_DB_IDS.HR_KNOWLEDGE) return [];
+  if (!query) return [];
   try {
-    const response = await notionClient.databases.query({
-      database_id: NOTION_DB_IDS.HR_KNOWLEDGE,
-      filter: {
-        or: [
-          { property: 'Title', rich_text: { contains: query } },
-          { property: 'Content', rich_text: { contains: query } },
-          { property: 'Tags', multi_select: { contains: query } },
-        ],
-      },
+    const response = await notionClient.search({
+      query,
+      filter: { value: 'page', property: 'object' },
+      page_size: 5,
     });
     return response.results.map((page) => ({
-      title: page.properties.Title?.title?.[0]?.plain_text || '',
-      content: page.properties.Content?.rich_text?.[0]?.plain_text || '',
-      url: page.public_url || `https://notion.so/${page.id.replace(/-/g, '')}`,
+      title: page.properties?.title?.title?.[0]?.plain_text ||
+             page.properties?.Name?.title?.[0]?.plain_text ||
+             page.title?.[0]?.plain_text || '',
+      content: '',
+      url: page.url || `https://notion.so/${page.id.replace(/-/g, '')}`,
     }));
   } catch (err) {
     console.error('Failed to fetch HR knowledge:', err.message);

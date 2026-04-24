@@ -112,7 +112,7 @@ async function answerHRQuestion(question, knowledgeBase) {
       .join('\n\n---\n\n');
 
     const message = await anthropic.messages.create({
-      model: 'claude-opus-4-20250805',
+      model: 'claude-sonnet-4-6',
       max_tokens: 500,
       system: `You are a helpful HR Assistant. Answer questions about HR policies, benefits, PTO, onboarding, and other HR-related topics based on the knowledge base provided.
 
@@ -148,18 +148,15 @@ async function handleAppMention(event) {
   const question = event.text.replace(/<@[^>]+>/g, '').trim();
 
   const knowledge = await fetchHRKnowledge(question);
-  const answer = await answerHRQuestion(
-    question,
-    knowledge.length > 0 ? knowledge : await fetchHRKnowledge('')
-  );
+  const answer = await answerHRQuestion(question, knowledge);
 
-  await logInteraction({
+  logInteraction({
     userId: event.user,
     question,
     response: answer,
     type: 'question',
     foundAnswer: knowledge.length > 0,
-  });
+  }).catch(console.error);
 
   await slack.chat.postMessage({
     channel: event.channel,

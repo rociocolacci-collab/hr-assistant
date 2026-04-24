@@ -1,36 +1,23 @@
-/**
- * HR Assistant - Core Backend Server
- * Handles Slack integration, Notion API, and HR request workflows
- * 
- * Setup Requirements:
- * - Node.js 18+
- * - Environment variables: SLACK_TOKEN, SLACK_SIGNING_SECRET, NOTION_TOKEN, NOTION_DB_ID, CLAUDE_API_KEY
- */
-
-const express = require('express');
-const { Client } = require('@slack/bolt');
+const { App, ExpressReceiver } = require('@slack/bolt');
 const { Client: NotionClient } = require('@notionhq/client');
 const Anthropic = require('@anthropic-ai/sdk');
-const crypto = require('crypto');
-const axios = require('axios');
 
 // ==================== CONFIGURATION ====================
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Slack Bot Configuration
-const slackApp = new Client({
-  token: process.env.SLACK_TOKEN,
+const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  processBeforeResponse: true,
 });
 
-// Notion API Configuration
+const slackApp = new App({
+  token: process.env.SLACK_TOKEN,
+  receiver,
+});
+
 const notionClient = new NotionClient({
   auth: process.env.NOTION_TOKEN,
 });
 
-// Claude API Configuration
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
 });
@@ -61,30 +48,6 @@ const NOTION_DB_IDS = {
  */
 
 // ==================== UTILITY FUNCTIONS ====================
-
-/**
- * Verify Slack request signature
- */
-function verifySlackSignature(req) {
-  const timestamp = req.headers['x-slack-request-timestamp'];
-  const slackSignature = req.headers['x-slack-signature'];
-  
-  // Prevent replay attacks
-  if (Math.abs(Date.now() / 1000 - timestamp) > 300) {
-    return false;
-  }
-
-  const baseString = `v0:${timestamp}:${req.rawBody}`;
-  const mySignature = 'v0=' + crypto
-    .createHmac('sha256', process.env.SLACK_SIGNING_SECRET)
-    .update(baseString)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(mySignature),
-    Buffer.from(slackSignature)
-  );
-}
 
 /**
  * Log interaction to Notion for analytics
@@ -610,105 +573,18 @@ function createHRRequestModal() {
   };
 }
 
-// ==================== EXPRESS ROUTES ====================
+// ==================== VERCEL HANDLER ====================
 
-app.use(express.json());
-
-// Middleware to handle Slack request verification
-app.use((req, res, next) => {
-  if (req.path.startsWith('/slack')) {
-    req.rawBody = JSON.stringify(req.body);
+const handler = async (req, res) => {
+  // Handle Slack URL verification challenge
+  if (req.body?.type === 'url_verification') {
+    return res.status(200).json({ challenge: req.body.challenge });
   }
-  next();
-});
 
-/**
- * Health check endpoint
- */
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+  return receiver.app(req, res);
+};
 
-/**
- * Slack events endpoint
- */
-app.post('/slack/events', async (req, res) => {
-  try {
-    // Verify Slack signature
-    if (!verifySlackSignature(req)) {
-      return res.status(401).send('Unauthorized');
-    }
+// Disable Vercel's automatic body parsing so Bolt can verify Slack signatures
+handler.config = { api: { bodyParser: false } };
 
-    // Handle URL verification
-    if (req.body.type === 'url_verification') {
-      return res.send(req.body.challenge);
-    }
-
-    // Pass to Slack app
-    await slackApp.processEvent(req.body);
-    res.status(200).send();
-  } catch (error) {
-    console.error('Slack event error:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-/**
- * Analytics endpoint
- */
-app.get('/analytics/summary', async (req, res) => {
-  try {
-    const response = await notionClient.databases.query({
-      database_id: NOTION_DB_IDS.INTERACTIONS_LOG,
-      filter: {
-        property: 'Timestamp',
-        date: {
-          past_week: {},
-        },
-      },
-    });
-
-    const interactions = response.results.map((page) => ({
-      type: page.properties.Type?.select?.name,
-      foundAnswer: page.properties['Found Answer']?.checkbox,
-      question: page.properties.Question?.rich_text?.[0]?.plain_text,
-    }));
-
-    const summary = {
-      total: interactions.length,
-      questions: interactions.filter((i) => i.type === 'question').length,
-      requests: interactions.filter((i) => i.type === 'request_submission').length,
-      answeredRate:
-        interactions.filter((i) => i.foundAnswer).length / interactions.length || 0,
-      topQuestions: [...interactions]
-        .filter((i) => i.type === 'question')
-        .slice(0, 5)
-        .map((i) => i.question),
-    };
-
-    res.json(summary);
-  } catch (error) {
-    console.error('Analytics error:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
-  }
-});
-
-// ==================== SERVER STARTUP ====================
-
-/**
- * Start the server
- */
-async function start() {
-  try {
-    await slackApp.start(PORT);
-    console.log(`⚡️ Slack app is running on port ${PORT}`);
-    console.log(`✅ HR Assistant is ready`);
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-start();
-
-module.exports = app;
+module.exports = handler;

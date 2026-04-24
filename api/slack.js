@@ -137,6 +137,81 @@ async function handleAppMention(event) {
   });
 }
 
+// ==================== BUTTON HANDLERS ====================
+
+async function handleSubmitRequest(payload) {
+  await slack.views.open({
+    trigger_id: payload.trigger_id,
+    view: {
+      type: 'modal',
+      callback_id: 'hr_request_modal',
+      title: { type: 'plain_text', text: 'HR Request' },
+      submit: { type: 'plain_text', text: 'Submit' },
+      close: { type: 'plain_text', text: 'Cancel' },
+      blocks: [
+        {
+          type: 'input',
+          block_id: 'request_type_block',
+          label: { type: 'plain_text', text: 'Request Type' },
+          element: {
+            type: 'static_select',
+            action_id: 'request_type_action',
+            placeholder: { type: 'plain_text', text: 'Select a type' },
+            options: [
+              { text: { type: 'plain_text', text: 'Employment Verification' }, value: 'employment_verification' },
+              { text: { type: 'plain_text', text: 'Salary Certificate' }, value: 'salary_certificate' },
+              { text: { type: 'plain_text', text: 'Document Request' }, value: 'document_request' },
+              { text: { type: 'plain_text', text: 'Policy Clarification' }, value: 'policy_clarification' },
+              { text: { type: 'plain_text', text: 'Benefits Question' }, value: 'benefits_question' },
+              { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
+            ],
+          },
+        },
+        {
+          type: 'input',
+          block_id: 'details_block',
+          label: { type: 'plain_text', text: 'Details' },
+          element: {
+            type: 'plain_text_input',
+            action_id: 'details_action',
+            multiline: true,
+            placeholder: { type: 'plain_text', text: 'Describe your request...' },
+          },
+        },
+        {
+          type: 'input',
+          block_id: 'deadline_block',
+          label: { type: 'plain_text', text: 'Deadline (optional)' },
+          optional: true,
+          element: {
+            type: 'plain_text_input',
+            action_id: 'deadline_action',
+            placeholder: { type: 'plain_text', text: 'e.g. End of week' },
+          },
+        },
+      ],
+    },
+  });
+}
+
+async function handleEscalate(payload) {
+  const userId = payload.user.id;
+  const hrChannel = process.env.SLACK_HR_CHANNEL;
+
+  if (hrChannel) {
+    await slack.chat.postMessage({
+      channel: hrChannel,
+      text: `*Escalation Request*\nUser <@${userId}> needs HR assistance.`,
+    });
+  }
+
+  await slack.chat.postEphemeral({
+    channel: payload.channel?.id || userId,
+    user: userId,
+    text: '✅ Your request has been sent to HR. They will reach out to you soon.',
+  });
+}
+
 // ==================== VERCEL HANDLER ====================
 
 module.exports = async (req, res) => {
@@ -146,10 +221,21 @@ module.exports = async (req, res) => {
     return res.status(200).json({ challenge: body.challenge });
   }
 
+  // Button clicks / interactive components
+  if (body?.type === 'block_actions') {
+    const action = body.actions?.[0];
+    if (action?.action_id === 'submit_hr_request') {
+      waitUntil(handleSubmitRequest(body).catch((err) => console.error('handleSubmitRequest error:', err.message)));
+    }
+    if (action?.action_id === 'escalate_to_hr') {
+      waitUntil(handleEscalate(body).catch((err) => console.error('handleEscalate error:', err.message)));
+    }
+    return res.status(200).send();
+  }
+
   const event = body?.event;
 
   if (event?.type === 'app_mention') {
-    // waitUntil keeps the Vercel function alive after res.send()
     waitUntil(
       handleAppMention(event).catch((err) =>
         console.error('handleAppMention error:', err.message)

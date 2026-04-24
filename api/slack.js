@@ -243,5 +243,14 @@ module.exports = async (req, res) => {
     );
   }
 
+  // Respond to DMs without needing @mention
+  if (event?.type === 'message' && event.channel_type === 'im' && !event.bot_id && !event.subtype) {
+    waitUntil(
+      handleAppMention(event).catch((err) =>
+        console.error('handleDM error:', err.message)
+      )
+    );
+  }
+
   return res.status(200).send();
 };

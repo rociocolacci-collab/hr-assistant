@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.15.0",
+    "@vercel/functions": "^1.0.0",
     "@notionhq/client": "^2.2.0",
     "@slack/bolt": "^3.17.0",
     "@slack/web-api": "^6.10.0",

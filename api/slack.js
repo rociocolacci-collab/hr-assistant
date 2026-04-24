@@ -68,15 +68,27 @@ async function generateAnswer(question, knowledge) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 500,
-    system: `You are a helpful HR Assistant. Answer questions about HR policies, benefits, PTO, onboarding, and other HR topics.
+    system: `You are a helpful HR Assistant in Slack. Answer questions about HR policies, benefits, PTO, onboarding, and other HR topics.
 ${knowledgeContext ? `\nKNOWLEDGE BASE:\n${knowledgeContext}` : ''}
-Rules: be concise and professional. If not found in knowledge base, suggest contacting HR directly. Do not invent policies.`,
+Formatting rules (Slack mrkdwn):
+- Use *bold* (single asterisk), not **bold**
+- Never use # or ## headers
+- Use bullet points with • or -
+- Keep responses concise and conversational
+- If not found in knowledge base, suggest contacting HR directly
+- Do not invent policies`,
     messages: [{ role: 'user', content: question }],
   });
 
-  return message.content[0]?.type === 'text'
+  const raw = message.content[0]?.type === 'text'
     ? message.content[0].text
     : 'I encountered an error. Please contact HR directly.';
+
+  // Convert markdown to Slack mrkdwn
+  return raw
+    .replace(/\*\*(.*?)\*\*/g, '*$1*')       // **bold** → *bold*
+    .replace(/^#{1,3}\s+/gm, '')              // remove # headers
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>'); // [text](url) → <url|text>
 }
 
 // ==================== EVENT HANDLER ====================

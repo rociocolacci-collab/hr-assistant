@@ -158,12 +158,6 @@ slackApp.event('app_mention', async ({ event, client, logger }) => {
   try {
     const question = event.text.replace(/<@[^>]+>/g, '').trim();
     
-    // Show typing indicator
-    await client.chat.metatype({
-      channel: event.channel,
-      user_id: event.user,
-    });
-
     // Fetch relevant HR knowledge
     const knowledge = await fetchHRKnowledge(question);
 

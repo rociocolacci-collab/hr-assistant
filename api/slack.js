@@ -57,23 +57,68 @@ async function logInteraction(data) {
 
 // ==================== CLAUDE ====================
 
+const HR_KNOWLEDGE = `
+=== TIME OFF / PTO ===
+dotCMS offers Open Time Off — no accrual, no cap. Use it for vacations, illness, family emergencies, mental health days, etc.
+Notice required: 1 day = 5 business days notice; 2–5 days = 15 business days; 5+ days = 30 business days.
+Limits: New hires max 5 days in first 90 days. No more than 10 days in any 30-day window (exceptions need exec approval).
+Sick days: If health absences exceed 15 business days/year, additional days are unpaid. Medical documentation required for 5+ consecutive days.
+How to request: Log into BambooHR → Main Page → "Request Time Off". All requests need manager approval.
+URL: https://www.notion.so/26ff3ed090a480debaebdd96c4fa8b7c
+
+=== PARENTAL LEAVE ===
+dotCMS offers fully paid parental leave.
+Primary Caregiver: 12 weeks at 100% base pay. Starts on birth/adoption date. Optional phased return weeks 13–15.
+Secondary Caregiver: 4 weeks at 100% base pay. Must be taken within 6 months of birth/adoption.
+How to request: Give 45 days notice to People & Culture. Submit forms and documentation. EOR employees (via Deel) must also notify Deel.
+URL: https://www.notion.so/271f3ed090a48061a4b7cafff6cc4c98
+
+=== BENEFITS ===
+- Open Time Off (no accrual)
+- Office equipment: approved laptop + supplemental equipment budget for home office. 3-year hardware refresh cycle.
+- Parental Leave: 12 weeks primary / 4 weeks secondary, fully paid
+- Claude AI License (Anthropic)
+- Udemy licenses (contact People & Culture)
+- Annual off-site (subject to financial status)
+- Referral bonus: $1,000 for full-time referrals, $300 for part-time (paid after 90 days)
+URL: https://www.notion.so/271f3ed090a480a8af28dae5feb8e6cd
+
+=== PAYROLL ===
+Schedule: Semimonthly — paid on the 15th and last day of each month. If pay date falls on weekend, paid on prior Friday.
+Platforms: Deel (international contractors and EOR Canada), ADP (US employees).
+Expense reimbursements: Use Brex. Submit via Brex → Wallet → Request Reimbursement.
+Countries not on Brex (Venezuela, Panama, Peru, Pakistan, Bolivia, Colombia): Email payroll@dotcms.com with receipts, copy manager.
+URL: https://www.notion.so/328f3ed090a481a0858aec4e2c81058f
+
+=== OFFICE & EQUIPMENT REQUEST ===
+All hardware requests go through Bamboo and require manager approval.
+Laptop renewal: 3-year refresh cycle. Need objective evidence of performance issue (degraded speed, hardware failure, software incompatibility).
+How to request: Contact manager → Manager submits in Bamboo → HR confirms.
+Supplemental equipment: Go to Bamboo → Assets Tab → Equipment Request.
+URL: https://www.notion.so/310f3ed090a480429655ea7efcf06060
+`;
+
 async function generateAnswer(question, knowledge) {
-  const knowledgeContext = knowledge
-    .map((k) => `Title: ${k.title}\nContent: ${k.content}\nURL: ${k.url}`)
-    .join('\n\n---\n\n');
+  const notionContext = knowledge.length > 0
+    ? knowledge.map((k) => `- ${k.title}: ${k.url}`).join('\n')
+    : '';
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 500,
-    system: `You are a helpful HR Assistant in Slack. Answer questions about HR policies, benefits, PTO, onboarding, and other HR topics.
-${knowledgeContext ? `\nKNOWLEDGE BASE:\n${knowledgeContext}` : ''}
+    system: `You are the People Assistant at dotCMS, answering HR questions in Slack.
+
+COMPANY HR KNOWLEDGE BASE:
+${HR_KNOWLEDGE}
+${notionContext ? `\nADDITIONAL RELEVANT PAGES:\n${notionContext}` : ''}
+
 Formatting rules (Slack mrkdwn):
 - Use *bold* (single asterisk), not **bold**
 - Never use # or ## headers
 - Use bullet points with • or -
 - Keep responses concise and conversational
-- If not found in knowledge base, suggest contacting HR directly
-- Do not invent policies`,
+- Always answer from the knowledge base above
+- For questions not covered, suggest contacting People & Culture directly`,
     messages: [{ role: 'user', content: question }],
   });
 

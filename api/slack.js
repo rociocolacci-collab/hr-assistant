@@ -368,11 +368,21 @@ module.exports = async (req, res) => {
     return res.status(200).json({ challenge: body.challenge });
   }
 
-  // Respond immediately so Slack doesn't retry
-  res.status(200).send();
-
-  // Handle events async
+  // app_mention: respond first, then process
   if (body?.event?.type === 'app_mention') {
-    await handleAppMention(body.event).catch(console.error);
+    res.status(200).send();
+    try {
+      await slack.chat.postMessage({
+        channel: body.event.channel,
+        thread_ts: body.event.ts,
+        text: 'Recibí tu mensaje, estoy procesando tu consulta...',
+      });
+      await handleAppMention(body.event);
+    } catch (err) {
+      console.error('Error handling app_mention:', err);
+    }
+    return;
   }
+
+  res.status(200).send();
 };

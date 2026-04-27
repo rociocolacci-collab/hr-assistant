@@ -39,6 +39,14 @@ const HR_PAGE_IDS = [
   '328f3ed090a481918794df886bad2409', // Grievance & Escalation Process
   // dotCMS
   '26ff3ed090a480d7bcf9dcb810571429', // Our Values
+  '333f3ed090a480ac85b0ef8eec74fc0a', // How it started
+  '322f3ed090a48010a5dae4c57fdef597', // Meet our Leadership Team
+  '333f3ed090a481dbbe9ed6c769a5e5e9', // Company Goals
+  '33ef3ed090a4801d88f7e974b46dabd8', // dotCMS Academy
+  // Tools of the trade
+  '272f3ed090a480569866d26a62caae7a', // Email Signature Setup
+  '272f3ed090a480fcaba4f5b246aaadf8', // Slack & Channels
+  '272f3ed090a4806aa0bdd172cd83fe09', // Ninety
 ];
 
 // Fallback knowledge — used if Notion is unreachable
@@ -234,6 +242,91 @@ Witnesses also have a responsibility to report, even if the affected person asks
 After reporting: HR notifies senior management → investigation begins → findings reviewed → both parties notified of outcome.
 All reports are confidential and on need-to-know basis. Retaliation is strictly prohibited.
 URL: https://www.notion.so/328f3ed090a481948026c0cf78987b5d
+
+=== HOW IT STARTED ===
+dotCMS was founded over 20 years ago and has grown into a global leader in content management.
+Social media & resources:
+- Website: https://www.dotcms.com
+- Blog: https://www.dotcms.com/blog
+- Videos & Events: https://www.dotcms.com/videos
+- YouTube: https://www.youtube.com/@dotCMS
+- Spotify Podcast: https://open.spotify.com/show/5HdRelxxb1lXOw43nDJ6Gp
+- Apple Podcast: https://podcasts.apple.com/us/podcast/real-talk-real-trust-with-dotcms/id1806177020
+URL: https://www.notion.so/333f3ed090a480ac85b0ef8eec74fc0a
+
+=== MEET OUR LEADERSHIP TEAM ===
+Senior Leadership:
+- Zain Ishaq — CEO: Company strategy, investor relations, organizational culture, and brand.
+- Vadym Kononenko — President: Finance and HR functions, operational efficiency.
+- Will Ezell — Co-Founder & CTO: 20+ years directing dotCMS development, enterprise content management platform.
+- Jason Smith — Co-Founder: 20+ years in tech, Head of Customer Experience.
+
+Key Contacts by Department:
+- Revenue: Ryan Picchini (CRO), Inna Bosenko (VP Marketing), Stacey Reiss (VP Sales)
+- Customer Experience: Jason Smith (Head CX), Melissa Petrie (Director CS), Ian Cooper (Director Professional Services), Dean Gonzalez (Manager Support)
+- Product & Engineering: Steve Freudenthaler (Director Engineering), Freddy Montes (VP Product)
+- General Admin: Mehdi Karimi (CyberSecurity & Compliance), Olga Sadkova (Controller Finance), Rocio Colacci (People Ops & Culture Partner), Sofia Mendieta (People Ops & Culture Associate)
+URL: https://www.notion.so/322f3ed090a48010a5dae4c57fdef597
+
+=== COMPANY GOALS ===
+Current position (Q1 2026): $11.67M ARR · 128 Customers · 19% EBITDA Margin
+
+2026 Targets (End of Year):
+- ARR: $12.5M | EBITDA Margin: 21% | Customers: 130 | NRR: 102% | GRR: 93% | Rule of 40: 31
+Strategic priorities: frictionless trial experience, complete how-to library, automated release notes, all contracts backed by usage data, debt/equity recap + acquire $3-4M ARR company.
+
+2028 Vision: $22M ARR, 200 customers, default CMS for multi-site enterprise, 70% of customers using AI features.
+2031 North Star: $50M ARR.
+URL: https://www.notion.so/333f3ed090a481dbbe9ed6c769a5e5e9
+
+=== DOTCMS ACADEMY ===
+Learning resources available to all team members:
+- EOS Session Recording (What the Heck is EOS): https://drive.google.com/file/d/1Jk7Ayw3isBUnwdAM_v0yzrHRZY339y7v/view
+- Company Rollout EOS Recording: https://drive.google.com/file/d/19KNxoxEgBvVqvC0fOaMU3TZzWxu48TCf/view
+- Lunch and Learn: AI Adoption: https://drive.google.com/drive/folders/1mbaO08BAO0EIdRXdp8CmcleyIkKfrwDW
+- Lunch and Learn for Engineers: https://drive.google.com/file/d/1E384nYI01NsRxsBZKNdO9I-1n8egBh6h/view
+- dotCMS Professional Development Training: https://app.leadde.ai/video-audience (Password: 8Yn4XA)
+URL: https://www.notion.so/33ef3ed090a4801d88f7e974b46dabd8
+
+=== EMAIL SIGNATURE SETUP ===
+All team members should use the official dotCMS email signature for consistent branding.
+How to set up:
+1. Download the signature file from Slack (pinned in #general).
+2. Follow the setup guide: https://docs.google.com/document/d/17Zek84xD8AK596aJhiBNn067abzyfwZtDsfPgW72y94/edit
+The guide includes instructions for Gmail and other email clients, plus troubleshooting tips.
+Questions? Reach out to People & Culture on Slack.
+URL: https://www.notion.so/272f3ed090a480569866d26a62caae7a
+
+=== SLACK & CHANNELS ===
+Slack is dotCMS's primary communication tool. Sign in with your dotCMS email.
+Profile setup: add photo, name pronunciation, title, location, and full name as username.
+
+Essential channels to join:
+- #general — company news and announcements
+- #wellness — health and wellness
+- #social — team bonding
+- #guild-ai — AI tips and best practices
+- #dot-kudos — peer recognition
+- #sales-wins — closed deals
+- #customer-obsession — customer feedback
+- #eng — engineering
+
+Social channels: #social-travel-and-adventure, #social-music, #women-in-tech
+Ask your manager about role-specific channels for your department.
+URL: https://www.notion.so/272f3ed090a480fcaba4f5b246aaadf8
+
+=== NINETY (EOS PLATFORM) ===
+Ninety.io is the platform dotCMS uses to run EOS (Entrepreneurial Operating System). Everything important lives here.
+- My 90: personal dashboard — your to-dos and Rocks
+- Rocks: quarterly priorities (3-5 per team, specific + measurable, one owner each). If a Rock isn't in Ninety, it doesn't exist.
+- Scorecard: weekly metrics per department. Green = on track, Red = needs attention.
+- 1-on-1s: quarterly People Analyzer conversations and annual reviews, all documented.
+- Accountability Chart: who owns what across the company — https://eos.ninety.io/chart/primary
+- V/TO: company vision, mission, core focus, and targets.
+
+Cadence: Weekly (scorecard + to-dos), Quarterly (new Rocks + People Analyzer), Annually (Annual Review).
+New to Ninety? Reach out to People & Culture for a walkthrough.
+URL: https://www.notion.so/272f3ed090a4806aa0bdd172cd83fe09
 
 === GRIEVANCE & ESCALATION PROCESS ===
 Use this for non-harassment concerns: workload disagreements, process frustrations, interpersonal conflicts, feeling unheard.

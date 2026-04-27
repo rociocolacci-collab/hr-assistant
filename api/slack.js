@@ -12,7 +12,7 @@ const NOTION_DB_IDS = {
   INTERACTIONS_LOG: process.env.NOTION_INTERACTIONS_LOG_ID,
 };
 
-// HR page IDs in Notion — bot reads these live on every question
+// HR page IDs — read live from Notion on every request
 const HR_PAGE_IDS = [
   '26ff3ed090a480debaebdd96c4fa8b7c', // Time Off
   '271f3ed090a48061a4b7cafff6cc4c98', // Parental Leave
@@ -21,11 +21,51 @@ const HR_PAGE_IDS = [
   '310f3ed090a480429655ea7efcf06060', // Office & Equipment Request
 ];
 
+// Fallback knowledge — used if Notion is unreachable
+const HR_FALLBACK = `
+=== TIME OFF / PTO ===
+dotCMS offers Open Time Off — no accrual, no cap. Use it for vacations, illness, family emergencies, mental health days, doctor's appointments, weddings, jury duty, bereavement, or anything else that requires stepping away.
+Notice required: 1 day = 5 business days; 2–5 days = 15 business days; 5+ days = 30 business days.
+Limits: New hires max 5 days in first 90 days. No more than 10 days in any 30-day window (exceptions need exec approval).
+Sick days: If health absences exceed 15 business days/year, additional days are unpaid. Documentation required for 5+ consecutive days.
+How to request: Log into BambooHR → Main Page → "Request Time Off". All requests need manager approval.
+URL: https://www.notion.so/26ff3ed090a480debaebdd96c4fa8b7c
+
+=== PARENTAL LEAVE ===
+dotCMS offers fully paid parental leave for birth, adoption, or foster placement.
+Primary Caregiver: 12 weeks at 100% base pay. Starts on birth/adoption date. One continuous period.
+Optional Phased Return: Week 13 = 50% hours, Week 14 = 75% hours, Week 15 = full hours — all at 100% pay.
+Secondary Caregiver: 4 weeks at 100% base pay. Must be taken within 6 months of birth/adoption.
+How to request: Give 45 days notice to People & Culture. Submit forms and documentation. EOR/Deel employees must also notify Deel.
+URL: https://www.notion.so/271f3ed090a48061a4b7cafff6cc4c98
+
+=== BENEFITS ===
+- Open Time Off (no accrual, no cap)
+- Office equipment: approved laptop + supplemental home office budget. 3-year hardware refresh cycle.
+- Parental Leave: 12 weeks primary / 4 weeks secondary, fully paid
+- Claude AI License (Anthropic Team)
+- Udemy licenses — contact People & Culture
+- Annual off-site (subject to financial status)
+- Wellness & Engagement programs (coffee chats, wellness sessions, Values Club)
+- Referral Program: $1,000 for full-time, $300 for part-time (paid after 90 days)
+URL: https://www.notion.so/271f3ed090a480a8af28dae5feb8e6cd
+
+=== PAYROLL & REIMBURSEMENTS ===
+Schedule: Semimonthly — 15th and last day of each month. Weekend pay dates shift to prior Friday.
+Platforms: Deel (international contractors + EOR Canada), ADP (US employees).
+Expense reimbursements: Use Brex → Wallet → Request Reimbursement. Manager approves, Finance pays within 48h.
+Countries without Brex (Venezuela, Panama, Peru, Pakistan, Bolivia, Colombia): Email payroll@dotcms.com with receipts, copy manager.
+URL: https://www.notion.so/328f3ed090a481a0858aec4e2c81058f
+
+=== OFFICE & EQUIPMENT REQUEST ===
+All hardware requests go through Bamboo and require manager approval. 3-year refresh cycle — age alone is not enough, need evidence of performance issue (slow, hardware failure, software incompatibility).
+How to request laptop: Contact manager → Manager submits in Bamboo → HR confirms.
+Supplemental equipment: Bamboo → Assets Tab → Equipment Request (if New Hire Allowance unused) or discuss with manager (if already used).
+URL: https://www.notion.so/310f3ed090a480429655ea7efcf06060
+`;
+
 // ==================== NOTION ====================
 
-/**
- * Extract plain text from Notion blocks
- */
 function extractTextFromBlocks(blocks) {
   const lines = [];
   for (const block of blocks) {
@@ -60,9 +100,6 @@ function extractTextFromBlocks(blocks) {
   return lines;
 }
 
-/**
- * Fetch all blocks from a Notion page (handles pagination)
- */
 async function fetchPageBlocks(pageId) {
   const blocks = [];
   let cursor;
@@ -78,9 +115,6 @@ async function fetchPageBlocks(pageId) {
   return blocks;
 }
 
-/**
- * Fetch live HR knowledge from Notion — called on every question
- */
 async function fetchHRKnowledge() {
   const pages = [];
   await Promise.all(
@@ -98,10 +132,9 @@ async function fetchHRKnowledge() {
           'HR Policy';
 
         const content = extractTextFromBlocks(blocks).join('\n').trim();
-
         pages.push({ title, content, url: `https://www.notion.so/${pageId}` });
       } catch (err) {
-        console.error(`Failed to fetch Notion page ${pageId}:`, err.message);
+        console.error(`Notion page ${pageId} error:`, err.message);
       }
     })
   );
@@ -129,19 +162,14 @@ async function logInteraction(data) {
 
 // ==================== CLAUDE ====================
 
-async function generateAnswer(question, hrPages) {
-  const knowledgeContext = hrPages.length > 0
-    ? hrPages.map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`).join('\n\n')
-    : 'No HR content could be loaded from Notion at this time.';
-
+async function generateAnswer(question, knowledgeText) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 500,
     system: `You are the People Assistant at dotCMS, answering HR questions in Slack.
 
-The following HR knowledge comes directly from the dotCMS Notion wiki and is always up to date:
-
-${knowledgeContext}
+HR KNOWLEDGE BASE:
+${knowledgeText}
 
 Formatting rules (Slack mrkdwn):
 - Use *bold* (single asterisk), not **bold**
@@ -173,8 +201,23 @@ async function handleAppMention(event) {
 
   console.log('Processing question:', question);
 
-  const hrPages = await fetchHRKnowledge();
-  const answer = await generateAnswer(question, hrPages);
+  // Try to get live Notion content; fall back to hardcoded if it fails
+  let knowledgeText = HR_FALLBACK;
+  try {
+    const hrPages = await fetchHRKnowledge();
+    if (hrPages.length > 0) {
+      knowledgeText = hrPages
+        .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
+        .join('\n\n');
+      console.log(`Loaded ${hrPages.length} pages from Notion`);
+    } else {
+      console.log('No pages loaded from Notion, using fallback');
+    }
+  } catch (err) {
+    console.error('fetchHRKnowledge failed, using fallback:', err.message);
+  }
+
+  const answer = await generateAnswer(question, knowledgeText);
 
   await slack.chat.postMessage({
     channel: event.channel,
@@ -205,7 +248,7 @@ async function handleAppMention(event) {
     question,
     response: answer,
     type: 'question',
-    foundAnswer: hrPages.length > 0,
+    foundAnswer: true,
   });
 }
 

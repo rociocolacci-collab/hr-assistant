@@ -388,22 +388,29 @@ async function handleAppMention(event) {
 
   console.log('Processing question:', question);
 
-  // Try Notion first (5s timeout); fall back to hardcoded if it fails
-  let knowledgeText = HR_FALLBACK;
+  // Load knowledge exclusively from Notion (no hardcoded fallback)
+  let knowledgeText = '';
   try {
-    const notionPromise = fetchHRKnowledge();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Notion timeout')), 5000)
-    );
-    const hrPages = await Promise.race([notionPromise, timeoutPromise]);
+    const hrPages = await fetchHRKnowledge();
     if (hrPages.length > 0) {
       knowledgeText = hrPages
         .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
         .join('\n\n');
       console.log(`Loaded ${hrPages.length} pages from Notion`);
+    } else {
+      console.log('Notion returned 0 pages');
     }
   } catch (err) {
-    console.log('Using fallback knowledge:', err.message);
+    console.error('Notion fetch error:', err.message);
+  }
+
+  if (!knowledgeText) {
+    await slack.chat.postMessage({
+      channel: event.channel,
+      thread_ts: event.ts,
+      text: 'Tuve un problema conectándome a Notion 😕 Por favor intentá de nuevo en unos segundos o contactá a People & Culture directamente.',
+    });
+    return;
   }
 
   const answer = await generateAnswer(question, knowledgeText);

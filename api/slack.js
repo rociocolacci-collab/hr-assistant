@@ -20,21 +20,39 @@ const HR_PAGE_IDS = [
   '271f3ed090a480a8af28dae5feb8e6cd', // Benefits
   '328f3ed090a481a0858aec4e2c81058f', // Payroll & Reimbursements
   '310f3ed090a480429655ea7efcf06060', // Office & Equipment Request
+  '334f3ed090a480268a76d0817f4e56fe', // Recognitions
+  // Community
+  '326f3ed090a480f8bda5f37b6927d564', // Company Holidays
+  'b5bbce16fd2444a191ed5ea465a6bc86', // Engagement Activities
+  '328f3ed090a481d18722e8dfed62706b', // Onboarding
+  '326f3ed090a48003aa67e0269c1eb9b6', // Offboarding
+  '328f3ed090a481a1b233d108ea50f5f1', // Referral Bonus & Role Transition
   // Professional Development
   '345f3ed090a480bbaaf8e322502f8222', // dotCMS Career Path
-  '322f3ed090a4811b9d21d0e3a9332050', // Annual Review Process
   '326f3ed090a48163ae54c9a533644789', // Professional Development
+  '322f3ed090a4811b9d21d0e3a9332050', // Annual Review Process
+  '334f3ed090a481f8951ad5b89360ba8c', // Annual Review Timeline
   // Company Policies
   '334f3ed090a480a88fe5c607399a192c', // Remote Work Policy
   '278f3ed090a480a3a9a0df1ec03e198b', // Travel & Expenses
   '328f3ed090a481948026c0cf78987b5d', // Harassment Prevention
   '328f3ed090a481918794df886bad2409', // Grievance & Escalation Process
-  // Onboarding
-  '328f3ed090a481d18722e8dfed62706b', // Onboarding
+  // dotCMS
+  '26ff3ed090a480d7bcf9dcb810571429', // Our Values
 ];
 
 // Fallback knowledge — used if Notion is unreachable
 const HR_FALLBACK = `
+=== OUR VALUES ===
+dotCMS has 6 core values — these are how a "dot" operates every day:
+1. We are Accountable: Own your work end-to-end. Raise issues early, think beyond your task, follow through even when no one is watching.
+2. We are Team Players: Jump in to help even when it's not your job. Share context proactively, adapt when priorities shift, celebrate teammates' wins.
+3. We are Doers: Ship, iterate, improve. Don't wait for perfect. Bring quality and care to every task, find a way forward through obstacles.
+4. We are Passionately Dedicated: Ask the "why", speak honestly even when it's hard, stay committed through setbacks, bring energy and intentionality.
+5. We are Humble: Give credit generously, ask for help, treat every conversation as a chance to learn, don't let success stop your growth.
+6. We are Customer Obsessed: Ask "how does this affect the customer?" Listen more than you talk. Treat customer feedback as a gift.
+URL: https://www.notion.so/26ff3ed090a480d7bcf9dcb810571429
+
 === TIME OFF / PTO ===
 dotCMS offers Open Time Off — no accrual, no cap. Use it for vacations, illness, family emergencies, mental health days, doctor's appointments, weddings, jury duty, bereavement, or anything else that requires stepping away.
 Notice required: 1 day = 5 business days; 2–5 days = 15 business days; 5+ days = 30 business days.
@@ -42,6 +60,16 @@ Limits: New hires max 5 days in first 90 days. No more than 10 days in any 30-da
 Sick days: If health absences exceed 15 business days/year, additional days are unpaid. Documentation required for 5+ consecutive days.
 How to request: Log into BambooHR → Main Page → "Request Time Off". All requests need manager approval.
 URL: https://www.notion.so/26ff3ed090a480debaebdd96c4fa8b7c
+
+=== COMPANY HOLIDAYS ===
+dotCMS offers 11 paid company holidays per year per location. All full-time team members are covered.
+If a holiday falls on Saturday → observed on Friday. If Sunday → observed on Monday.
+If a company holiday falls during your approved PTO, that day does NOT count against your PTO balance.
+If your role requires working on a holiday, coordinate with your manager in advance.
+Subscribe to the holiday calendar: https://calendar.google.com/calendar/embed?src=c_0a7fa996a51bb20a088197e4d91fd4ab731e9be9cce1a82d26afa15ce2a3b2d9%40group.calendar.google.com
+Full holiday list by location (Google Sheets): https://docs.google.com/spreadsheets/d/1jicu_-Qoac15UYgEkiTa17AUjukITihlLNRVsYU4fc8
+BambooHR Slack commands: /timeoff (balances), /whosout (who's out today), /requesttimeoff (submit request), /whois (employee lookup).
+URL: https://www.notion.so/326f3ed090a480f8bda5f37b6927d564
 
 === PARENTAL LEAVE ===
 dotCMS offers fully paid parental leave for birth, adoption, or foster placement.
@@ -75,75 +103,32 @@ How to request laptop: Contact manager → Manager submits in Bamboo → HR conf
 Supplemental equipment: Bamboo → Assets Tab → Equipment Request (if New Hire Allowance unused) or discuss with manager (if already used).
 URL: https://www.notion.so/310f3ed090a480429655ea7efcf06060
 
-=== ANNUAL REVIEW PROCESS ===
-Annual Reviews happen once a year in November/December. dotCMS uses a performance distribution model (Bell Curve) for fair and consistent evaluations.
+=== RECOGNITIONS ===
+dotCMS uses Matter in Slack for peer recognition. Join #dot-kudos to give and receive kudos.
+Goal: celebrate day-to-day wins, recognize big and small accomplishments, make recognition a weekly habit.
+URL: https://www.notion.so/334f3ed090a480268a76d0817f4e56fe
 
-Performance categories:
-- Exceptional (top 10%): Consistently exceeds all expectations, drives major business impact, inspires others.
-- Exceed Expectations (next 20%): Consistently above expectations, takes initiative, measurable impact beyond core role.
-- Meet Expectations (40% — median): Meets all goals and expectations consistently. This is a great place to be!
-- Below Expectations (next 20%): Occasionally fails to meet expectations, needs improvement and coaching.
-- Low Performer (bottom 10%): Consistently underperforms, may require a performance improvement plan (PIP).
+=== REFERRAL BONUS & ROLE TRANSITION ===
+Referral Program: Know someone great? Refer them and earn:
+- Full-time role: $1,000 USD (paid after they complete 90 days)
+- Part-time role: $300 USD (paid after they complete 90 days)
+To refer: Message Rocio Colacci via email with candidate's name, contact info, and the role.
 
-How ratings work — your final rating = Performance (1–5) + Values (A–C):
-- Performance: 1=Exceptional, 2=Exceeds, 3=Meets, 4=Below, 5=Low
-- Values: A=Exemplary (5+ positive ratings, 0 negatives), B=Strong (4+ positive, ≤1 negative), C=Developing (3+ positive, ≤2 negatives)
-- Combined example: 3A = Meets Expectations + Exemplary Values
+Internal Role Transition: Interested in a different role at dotCMS?
+1. Check BambooHR for open positions.
+2. Notify your current manager before applying.
+3. Contact People & Culture to learn more and set up a call.
+4. Interview process: resume + screening + hiring manager interview + skills assessment (no cultural interview needed for internal candidates).
+5. If selected: offer details + up to 60-day transition period for knowledge transfer.
+URL: https://www.notion.so/328f3ed090a481a1b233d108ea50f5f1
 
-Process steps:
-1. Self-assessment + Manager assessment in Ninety (covers Values, GWC, Performance, Manager Review, Reflection).
-2. Bell Curve placement by managers and department heads.
-3. Calibration across teams — salary increase % assigned consistently per rating.
-4. 1:1 conversation with manager to share results and align on development priorities.
-URL: https://www.notion.so/322f3ed090a4811b9d21d0e3a9332050
-
-=== CAREER PATH & LEVELS ===
-dotCMS has two career tracks — Individual Contributors (ICs) and Managers. Both are equally valued.
-Levels are based on skills and impact, not tenure alone.
-
-IC Track:
-- L1 Associate/Trainee: Learning basics, needs close guidance. 0–2 years.
-- L2 Junior: Handles routine work more independently, owns defined deliverables. 2–4 years.
-- L3 Mid Level: Executes independently, owns small projects end-to-end. 4+ years.
-- L4 Senior: Drives company objectives, high autonomy, leads small project teams. 7+ years. (Path branches here to Tech Lead or Management)
-- L5 Staff: Technical leader for large cross-functional projects, mentors others, thought leader. 7+ years.
-- L6 Principal: Sets direction for entire domain, shapes company strategy, highest autonomy. 10+ years.
-
-Manager Track (branches from L4 Senior):
-- M1 Manager: Manages small team of ICs, 1-quarter time horizon. 5+ years total.
-- M2 Senior Manager: Manages ICs and possibly other managers, multi-quarter scope. 8+ years.
-- M3 Director: Manages through other managers, drives company-wide impact. 12+ years.
-- M4 Senior Director: Leads full functional business unit, strategic contributions. 15+ years.
-
-Note: Most people exhibit qualities across 2 levels at any time — that's normal.
-URL: https://www.notion.so/345f3ed090a480bbaaf8e322502f8222
-
-=== PROFESSIONAL DEVELOPMENT ===
-Three conversation types guide growth at dotCMS:
-1. Monthly 1:1s — build trust. At least once/month. Personal check-in, wins, blockers, feedback both ways.
-2. Quarterly Career Conversations — 3x/year (Apr, Jul, Oct). Cover Values, GWC (Get it/Want it/Capacity), performance Rocks, and growth questions.
-3. Annual Performance Review — once/year (December). Determines Bell Curve position, career level, and compensation.
-
-GWC Framework:
-- G (Get it): Do you understand your role and its impact?
-- W (Want it): Are you genuinely energized by this work?
-- C (Capacity): Do you have the skills and bandwidth to deliver?
-
-The goal is continuous feedback with no surprises at any stage.
-URL: https://www.notion.so/326f3ed090a48163ae54c9a533644789
-
-=== REMOTE WORK POLICY ===
-dotCMS is a remote-first company. When your work location changes, follow these rules:
-
-Relocation types:
-- Temporary (less than 30 days): Submit in BambooHR at least 5 business days before. Requires manager approval.
-- Extended Temporary (30+ days): Submit written request to Manager + People & Culture at least 30 days before. Reviewed by Department Head.
-- Permanent: Submit to Manager + People & Culture at least 90 days before. May trigger contract changes and/or compensation adjustments.
-
-All relocations require prior approval — moving first and asking later is not compliant.
-Tax and legal implications may apply, especially for permanent moves.
-Set new core collaboration hours with your manager before any move.
-URL: https://www.notion.so/334f3ed090a480a88fe5c607399a192c
+=== ENGAGEMENT ACTIVITIES ===
+dotCMS runs several recurring engagement programs:
+1. Coffee Chats: Monthly themed virtual 30-min gatherings (camera-on encouraged). 2026 themes include Women's Day, World Cup, Gamer Day, Halloween, Year-End.
+2. Values Club: Quarterly sessions bringing one company value to life through team stories and activities.
+3. Leadership Q&A Series: Informal sessions where leaders share personal journeys — no slides, just honest stories + open Q&A.
+Got ideas? Reach out to People & Culture anytime.
+URL: https://www.notion.so/b5bbce16fd2444a191ed5ea465a6bc86
 
 === ONBOARDING ===
 New hire onboarding covers 90 days in 4 phases:
@@ -151,11 +136,113 @@ New hire onboarding covers 90 days in 4 phases:
 - Phase 2 (Weeks 2–4): Learn the ropes — culture, processes, role scope. Day 30 check-in with People & Culture.
 - Phase 3 (Weeks 5–8): Build momentum — start owning work, build relationships.
 - Phase 4 (Weeks 9–12): Own your role — operate independently, Day 90 manager review.
-
-Two tracks run in parallel: General Onboarding (this page) + Role-Specific Guide (Engineering, Product, CX, Sales, Marketing, Professional Services).
-Start with: New Hire General Material (setup checklist, tools, policies).
+Two tracks run in parallel: General Onboarding + Role-Specific Guide (Engineering, Product, CX, Sales, Marketing, Professional Services).
 Questions? Reach out to People & Culture on Slack anytime.
 URL: https://www.notion.so/328f3ed090a481d18722e8dfed62706b
+
+=== OFFBOARDING ===
+If you're leaving dotCMS, the process:
+1. Email People & Culture + cc your manager with: resignation statement, last working day, brief reason (optional). English required.
+2. Notice period: per your contract, typically 2–4 weeks.
+3. Manager schedules transition conversation. People Ops confirms last day.
+4. Before last day: knowledge transfer, handover meetings, return equipment.
+5. Exit interview with People & Culture (confidential, 30 min).
+6. Final paycheck on next regular pay date. Pending expenses must be submitted before last day.
+7. Equipment: People & Culture will offer option to purchase your laptop at book price. Otherwise, return it.
+8. US/EoR only: health insurance ends on last day, COBRA info provided if eligible.
+URL: https://www.notion.so/326f3ed090a48003aa67e0269c1eb9b6
+
+=== ANNUAL REVIEW PROCESS ===
+Annual Reviews happen once a year in November/December. dotCMS uses a Bell Curve performance model.
+
+Performance categories:
+- Exceptional (top 10%): Consistently exceeds all expectations, drives major business impact.
+- Exceed Expectations (next 20%): Consistently above expectations, measurable impact beyond core role.
+- Meet Expectations (40% — median): Meets all goals consistently. This is a great place to be!
+- Below Expectations (next 20%): Occasionally fails to meet expectations, needs improvement.
+- Low Performer (bottom 10%): Consistently underperforms, may require a PIP.
+
+Final rating = Performance (1–5) + Values (A–C):
+- Performance: 1=Exceptional, 2=Exceeds, 3=Meets, 4=Below, 5=Low
+- Values: A=Exemplary (5+ positive, 0 negatives), B=Strong (4+ positive, ≤1 negative), C=Developing (3+ positive, ≤2 negatives)
+- Example: 3A = Meets Expectations + Exemplary Values
+
+Process: Self-assessment in Ninety → Manager evaluation → Bell Curve calibration → 1:1 conversation with manager.
+URL: https://www.notion.so/322f3ed090a4811b9d21d0e3a9332050
+
+=== ANNUAL REVIEW TIMELINE ===
+All dates are in December each year:
+- Through Dec 5: Complete your self-assessment in Ninety (HARD DEADLINE — late submissions delay your whole team).
+- Dec 6–15: Managers assess direct reports and work on Bell Curve placements.
+- Dec 16–19: Leadership calibration — ratings and salary increases assigned.
+- Dec 19–26: 1:1 Annual Conversation with your manager. Official letter via BambooHR by Dec 26.
+- Jan 1: All salary adjustments and promotions take effect. First January paycheck reflects changes.
+URL: https://www.notion.so/334f3ed090a481f8951ad5b89360ba8c
+
+=== CAREER PATH & LEVELS ===
+dotCMS has two career tracks — Individual Contributors (ICs) and Managers. Both are equally valued.
+
+IC Track:
+- L1 Associate/Trainee: Learning basics, needs close guidance. 0–2 years.
+- L2 Junior: Handles routine work more independently. 2–4 years.
+- L3 Mid Level: Executes independently, owns small projects end-to-end. 4+ years.
+- L4 Senior: Drives company objectives, high autonomy, leads small teams. 7+ years. (Branches to Tech Lead or Management)
+- L5 Staff: Technical leader for large cross-functional projects, mentors others. 7+ years.
+- L6 Principal: Sets direction for entire domain, shapes company strategy. 10+ years.
+
+Manager Track (from L4):
+- M1 Manager: Small team of ICs, 1-quarter horizon. 5+ years total.
+- M2 Senior Manager: ICs + possibly other managers, multi-quarter scope. 8+ years.
+- M3 Director: Manages through other managers, company-wide impact. 12+ years.
+- M4 Senior Director: Full functional business unit, strategic contributions. 15+ years.
+URL: https://www.notion.so/345f3ed090a480bbaaf8e322502f8222
+
+=== PROFESSIONAL DEVELOPMENT ===
+Three conversation types guide growth:
+1. Monthly 1:1s — at least once/month. Personal check-in, wins, blockers, feedback both ways.
+2. Quarterly Career Conversations — 3x/year (Apr, Jul, Oct). Cover Values, GWC, performance Rocks, growth.
+3. Annual Performance Review — December. Determines Bell Curve position, career level, compensation.
+
+GWC Framework:
+- G (Get it): Do you understand your role and its impact?
+- W (Want it): Are you genuinely energized by this work?
+- C (Capacity): Do you have the skills and bandwidth to deliver?
+URL: https://www.notion.so/326f3ed090a48163ae54c9a533644789
+
+=== REMOTE WORK POLICY ===
+dotCMS is remote-first. When your location changes:
+- Temporary (<30 days): Submit in BambooHR at least 5 business days before. Manager approval required.
+- Extended Temporary (30+ days): Written request to Manager + People & Culture at least 30 days before. Department Head review.
+- Permanent: Written request at least 90 days before. May trigger contract changes and/or compensation adjustments.
+All relocations require prior approval — moving first and asking later is not compliant.
+URL: https://www.notion.so/334f3ed090a480a88fe5c607399a192c
+
+=== TRAVEL & EXPENSES ===
+dotCMS reimburses business-related expenses. Rules:
+- Expenses must have a clear business connection.
+- Submit within 30 days of the trip or event.
+- One expense report per trip, consolidating all costs.
+- Always keep receipts — no receipt, no reimbursement.
+How to submit: Select "Travel and Transportation Policy" in Brex and follow the reimbursement process.
+Processing: Reimbursement within 24 hours after manager approval.
+URL: https://www.notion.so/278f3ed090a480a3a9a0df1ec03e198b
+
+=== HARASSMENT PREVENTION ===
+dotCMS has zero tolerance for harassment and discrimination.
+How to report: Talk to manager or HR directly (Slack, in person, or email). Go straight to HR if your manager is involved. Anonymous reporting form available (link shared soon).
+Witnesses also have a responsibility to report, even if the affected person asks you not to.
+After reporting: HR notifies senior management → investigation begins → findings reviewed → both parties notified of outcome.
+All reports are confidential and on need-to-know basis. Retaliation is strictly prohibited.
+URL: https://www.notion.so/328f3ed090a481948026c0cf78987b5d
+
+=== GRIEVANCE & ESCALATION PROCESS ===
+Use this for non-harassment concerns: workload disagreements, process frustrations, interpersonal conflicts, feeling unheard.
+Steps:
+1. Start with your manager — a direct 1:1 conversation resolves most issues.
+2. If your manager is involved or Step 1 didn't work → reach out to People & Culture directly via Slack or email. No formal form needed.
+3. For serious unresolved concerns → People & Culture involves senior leadership.
+People & Culture acknowledges within 2 business days. Conversations are confidential. No negative consequences for raising concerns in good faith.
+URL: https://www.notion.so/328f3ed090a481918794df886bad2409
 `;
 
 // ==================== NOTION ====================

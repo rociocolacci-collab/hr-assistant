@@ -14,11 +14,23 @@ const NOTION_DB_IDS = {
 
 // HR page IDs — read live from Notion on every request
 const HR_PAGE_IDS = [
+  // People & HR
   '26ff3ed090a480debaebdd96c4fa8b7c', // Time Off
   '271f3ed090a48061a4b7cafff6cc4c98', // Parental Leave
   '271f3ed090a480a8af28dae5feb8e6cd', // Benefits
   '328f3ed090a481a0858aec4e2c81058f', // Payroll & Reimbursements
   '310f3ed090a480429655ea7efcf06060', // Office & Equipment Request
+  // Professional Development
+  '345f3ed090a480bbaaf8e322502f8222', // dotCMS Career Path
+  '322f3ed090a4811b9d21d0e3a9332050', // Annual Review Process
+  '326f3ed090a48163ae54c9a533644789', // Professional Development
+  // Company Policies
+  '334f3ed090a480a88fe5c607399a192c', // Remote Work Policy
+  '278f3ed090a480a3a9a0df1ec03e198b', // Travel & Expenses
+  '328f3ed090a481948026c0cf78987b5d', // Harassment Prevention
+  '328f3ed090a481918794df886bad2409', // Grievance & Escalation Process
+  // Onboarding
+  '328f3ed090a481d18722e8dfed62706b', // Onboarding
 ];
 
 // Fallback knowledge — used if Notion is unreachable
@@ -206,9 +218,23 @@ async function handleAppMention(event) {
 
   console.log('Processing question:', question);
 
-  // Use hardcoded knowledge (always reliable)
-  // Notion live-sync can be re-enabled once API access is confirmed
-  const knowledgeText = HR_FALLBACK;
+  // Try Notion first (5s timeout); fall back to hardcoded if it fails
+  let knowledgeText = HR_FALLBACK;
+  try {
+    const notionPromise = fetchHRKnowledge();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Notion timeout')), 5000)
+    );
+    const hrPages = await Promise.race([notionPromise, timeoutPromise]);
+    if (hrPages.length > 0) {
+      knowledgeText = hrPages
+        .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
+        .join('\n\n');
+      console.log(`Loaded ${hrPages.length} pages from Notion`);
+    }
+  } catch (err) {
+    console.log('Using fallback knowledge:', err.message);
+  }
 
   const answer = await generateAnswer(question, knowledgeText);
 

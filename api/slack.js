@@ -8,32 +8,104 @@ const notionClient = new NotionClient({ auth: process.env.NOTION_TOKEN });
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 const NOTION_DB_IDS = {
-  HR_KNOWLEDGE: process.env.NOTION_HR_KB_ID,
   HR_REQUESTS: process.env.NOTION_HR_REQUESTS_ID,
   INTERACTIONS_LOG: process.env.NOTION_INTERACTIONS_LOG_ID,
 };
 
+// HR page IDs in Notion — bot reads these live on every question
+const HR_PAGE_IDS = [
+  '26ff3ed090a480debaebdd96c4fa8b7c', // Time Off
+  '271f3ed090a48061a4b7cafff6cc4c98', // Parental Leave
+  '271f3ed090a480a8af28dae5feb8e6cd', // Benefits
+  '328f3ed090a481a0858aec4e2c81058f', // Payroll & Reimbursements
+  '310f3ed090a480429655ea7efcf06060', // Office & Equipment Request
+];
+
 // ==================== NOTION ====================
 
-async function fetchHRKnowledge(query) {
-  if (!query) return [];
-  try {
-    const response = await notionClient.search({
-      query,
-      filter: { value: 'page', property: 'object' },
-      page_size: 5,
-    });
-    return response.results.map((page) => ({
-      title: page.properties?.title?.title?.[0]?.plain_text ||
-             page.properties?.Name?.title?.[0]?.plain_text ||
-             page.title?.[0]?.plain_text || '',
-      content: '',
-      url: page.url || `https://notion.so/${page.id.replace(/-/g, '')}`,
-    }));
-  } catch (err) {
-    console.error('Failed to fetch HR knowledge:', err.message);
-    return [];
+/**
+ * Extract plain text from Notion blocks
+ */
+function extractTextFromBlocks(blocks) {
+  const lines = [];
+  for (const block of blocks) {
+    const type = block.type;
+    const content = block[type];
+    if (!content) continue;
+
+    const richText = content.rich_text || [];
+    const text = richText.map((t) => t.plain_text).join('');
+
+    if (text) {
+      if (type === 'heading_1' || type === 'heading_2' || type === 'heading_3') {
+        lines.push(`\n### ${text}`);
+      } else if (type === 'bulleted_list_item' || type === 'numbered_list_item') {
+        lines.push(`- ${text}`);
+      } else if (type === 'callout') {
+        lines.push(`> ${text}`);
+      } else if (type === 'table_row') {
+        const cells = (content.cells || []).map((cell) =>
+          cell.map((t) => t.plain_text).join('')
+        );
+        lines.push(cells.join(' | '));
+      } else {
+        lines.push(text);
+      }
+    }
+
+    if (block.has_children && block.children) {
+      lines.push(...extractTextFromBlocks(block.children));
+    }
   }
+  return lines;
+}
+
+/**
+ * Fetch all blocks from a Notion page (handles pagination)
+ */
+async function fetchPageBlocks(pageId) {
+  const blocks = [];
+  let cursor;
+  do {
+    const res = await notionClient.blocks.children.list({
+      block_id: pageId,
+      start_cursor: cursor,
+      page_size: 100,
+    });
+    blocks.push(...res.results);
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor);
+  return blocks;
+}
+
+/**
+ * Fetch live HR knowledge from Notion — called on every question
+ */
+async function fetchHRKnowledge() {
+  const pages = [];
+  await Promise.all(
+    HR_PAGE_IDS.map(async (pageId) => {
+      try {
+        const [pageMeta, blocks] = await Promise.all([
+          notionClient.pages.retrieve({ page_id: pageId }),
+          fetchPageBlocks(pageId),
+        ]);
+
+        const title =
+          pageMeta.properties?.title?.title?.[0]?.plain_text ||
+          pageMeta.properties?.Page?.title?.[0]?.plain_text ||
+          pageMeta.properties?.Name?.title?.[0]?.plain_text ||
+          'HR Policy';
+
+        const content = extractTextFromBlocks(blocks).join('\n').trim();
+
+        pages.push({ title, content, url: `https://www.notion.so/${pageId}` });
+      } catch (err) {
+        console.error(`Failed to fetch Notion page ${pageId}:`, err.message);
+      }
+    })
+  );
+  return pages;
 }
 
 async function logInteraction(data) {
@@ -57,150 +129,26 @@ async function logInteraction(data) {
 
 // ==================== CLAUDE ====================
 
-const HR_KNOWLEDGE = `
-=== TIME OFF / PTO ===
-dotCMS offers Open Time Off — no accrual, no cap. Use it for vacations, illness, family emergencies, mental health days, doctor's appointments, weddings, jury duty, bereavement, or anything else that requires stepping away.
-
-Notice required for planned absences:
-- 1 day: 5 business days notice
-- 2–5 days: 15 business days notice
-- 5+ days: 30 business days notice
-
-Important limits:
-- Unplanned absences: Let your manager know ASAP. Submit the absence in Bamboo when you return.
-- New hires: Maximum 5 time off days in first 90 days.
-- General limit: No more than 10 time off days in any 30-day window (exceptions require executive approval).
-
-Sick days: If health-related absences exceed 15 business days per year, additional days are unpaid. Medical documentation required for absences longer than 5 consecutive days.
-
-Best practices:
-- Plan ahead. Delegate work, brief your team, prepare what colleagues need while you're away.
-- Fully disconnect. Avoid "soft availability" — being half-checked-in isn't rest.
-- Update your Slack status, set OOO on Gmail, and let people know who to contact.
-- Spread time off throughout the year rather than front/back-loading it.
-
-How to request: Log into BambooHR → Main Page → "Request Time Off". All requests need manager approval. BambooHR is the system of record — if it's not there, it didn't happen.
-
-Calendars:
-- Who's Out Calendar: https://dotcms.bamboohr.com/feeds/feed.php?id=3a7642bd650e0430b5c7e8bac2d0549a
-- Company Holidays (11 paid holidays/year): https://calendar.google.com/calendar/embed?src=c_0a7fa996a51bb20a088197e4d91fd4ab731e9be9cce1a82d26afa15ce2a3b2d9%40group.calendar.google.com
-
-URL: https://www.notion.so/26ff3ed090a480debaebdd96c4fa8b7c
-
-=== PARENTAL LEAVE ===
-dotCMS offers fully paid parental leave for birth, adoption, or foster placement.
-
-Primary Caregiver: 12 weeks at 100% base pay. Leave starts on birth/adoption date. Must be one continuous period.
-Optional Phased Return (weeks 13–15, all at 100% pay):
-- Week 13: 50% of regular hours
-- Week 14: 75% of regular hours
-- Week 15: Full regular hours
-The phased return is optional and only available after at least 12 continuous weeks of leave.
-
-Secondary Caregiver: 4 weeks at 100% base pay. Must be taken within 6 months of birth/adoption. One continuous period.
-
-How to request:
-1. Notify People & Culture at least 45 days before leave start date.
-2. Submit forms and supporting documents (due date, adoption confirmation, etc.).
-3. HR coordinates with your manager for task handover.
-4. If using phased return, coordinate weeks 13–15 schedule before leave starts.
-
-EOR employees (via Deel): Also notify Deel through the platform, request leave in Deel, and forward government benefit confirmation (e.g., Service Canada) for salary top-up calculation.
-
-Additional time beyond paid entitlement: Personal leave of absence — requires formal approval from People & Culture and the President/CEO.
-
-URL: https://www.notion.so/271f3ed090a48061a4b7cafff6cc4c98
-
-=== BENEFITS ===
-- Open Time Off (no accrual, no cap)
-- Office equipment: approved laptop + supplemental equipment budget for home office. 3-year hardware refresh cycle.
-- Parental Leave: 12 weeks primary / 4 weeks secondary, fully paid
-- Claude AI License (Anthropic Team License) — for writing, research, analysis, brainstorming. Follow the AI Acceptable Use Policy.
-- Udemy licenses — contact People & Culture to request access
-- Annual off-site (subject to company financial status) — whole team gathers in person once a year
-- Wellness & Engagement: ongoing programs — coffee chats, wellness sessions, leadership conversations, Values Club
-- Referral Program: $1,000 for full-time referrals, $300 for part-time (paid after 90 days). Most credits at end of quarter wins a prize!
-Questions about benefits: Contact People & Culture.
-URL: https://www.notion.so/271f3ed090a480a8af28dae5feb8e6cd
-
-=== PAYROLL & REIMBURSEMENTS ===
-Schedule: Semimonthly — paid on the 15th and last day of each month. If pay date falls on a weekend, payment is on the prior Friday.
-
-Payroll platforms:
-- Deel: International contractors and EOR (Canada)
-- ADP: US employees
-
-2026 Pay Dates (adjusted for weekends):
-- January: Jan 15, Jan 30 (Jan 31 falls on Saturday)
-- February: Feb 13, Feb 27 (both adjusted for weekends)
-- March: Mar 13, Mar 31 (Mar 15 falls on Sunday)
-- April: Apr 15, Apr 30
-- May: May 15, May 29 (May 31 falls on Sunday)
-- June: Jun 15, Jun 30
-- July: Jul 15, Jul 31
-- August: Aug 14, Aug 31 (Aug 15 falls on Saturday)
-- September: Sep 15, Sep 30
-- October: Oct 15, Oct 30 (Oct 31 falls on Saturday)
-- November: Nov 13, Nov 30 (Nov 15 falls on Sunday)
-- December: Dec 15, Dec 31
-
-International team members: Payment dates may vary based on country's banking system and local holidays. Check with People & Culture.
-
-Expense reimbursements — use Brex:
-1. New hires: Enroll in Brex (check your inbox for the invitation email from Brex or dotCMS Finance).
-2. Log in to Brex → Wallet or Expenses → Request Reimbursement.
-3. Fill in: date of purchase, amount, receipt, and memo (e.g., "Client dinner — Chicago offsite").
-4. Submit — manager approves in Brex → Tasks → Reimbursements.
-5. Finance processes payment after approval (typically within 48 hours).
-Splitting across budgets: Submit two separate requests with the same receipt, adjusting the amount on each.
-Video tutorial: https://drive.google.com/drive/folders/0AOVtPBGsl7jxUk9PVA
-
-Countries NOT on Brex (Venezuela, Panama, Peru, Pakistan, Bolivia, Colombia):
-Fill out the expense reimbursement template, attach receipts, email payroll@dotcms.com, and copy your manager.
-
-URL: https://www.notion.so/328f3ed090a481a0858aec4e2c81058f
-
-=== OFFICE & EQUIPMENT REQUEST ===
-All hardware and equipment requests go through Bamboo and require manager approval.
-
-Laptop renewal: dotCMS targets a 3-year hardware refresh cycle, but age alone is NOT a reason for replacement. Need objective evidence of a performance issue:
-- Degraded performance (significantly slower, freezing, overheating)
-- Hardware failure (broken screen, failed keyboard, battery issues)
-- Software incompatibility (cannot run required tools for current workloads)
-Diagnostics, benchmarks, or IT assessment required as evidence.
-
-How to request laptop renewal:
-1. Contact your manager — describe the issue and share diagnostic evidence.
-2. Manager submits in Bamboo — opens "Equipment Upgrade or Supplemental Equipment" request with details.
-3. HR confirms — People & Culture reviews and coordinates next steps.
-
-Supplemental equipment (monitors, keyboards, chairs, etc.):
-Option A — Haven't used New Hire Allowance: Go to Bamboo → Assets Tab → Equipment Request. Add cost, item link, description. Manager approves. HR processes reimbursement.
-Option B — Already used New Hire Allowance: Discuss with your manager. Manager opens request in Bamboo under your profile → "Equipment Upgrade or Supplemental Equipment" → completes item name, link, cost, business justification. HR processes reimbursement.
-
-URL: https://www.notion.so/310f3ed090a480429655ea7efcf06060
-`;
-
-async function generateAnswer(question, knowledge) {
-  const notionContext = knowledge.length > 0
-    ? knowledge.map((k) => `- ${k.title}: ${k.url}`).join('\n')
-    : '';
+async function generateAnswer(question, hrPages) {
+  const knowledgeContext = hrPages.length > 0
+    ? hrPages.map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`).join('\n\n')
+    : 'No HR content could be loaded from Notion at this time.';
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 500,
     system: `You are the People Assistant at dotCMS, answering HR questions in Slack.
 
-COMPANY HR KNOWLEDGE BASE:
-${HR_KNOWLEDGE}
-${notionContext ? `\nADDITIONAL RELEVANT PAGES:\n${notionContext}` : ''}
+The following HR knowledge comes directly from the dotCMS Notion wiki and is always up to date:
+
+${knowledgeContext}
 
 Formatting rules (Slack mrkdwn):
 - Use *bold* (single asterisk), not **bold**
 - Never use # or ## headers
 - Use bullet points with • or -
 - Keep responses concise and conversational
-- Always answer from the knowledge base above
+- Always answer from the knowledge above
 - For questions not covered, suggest contacting People & Culture directly`,
     messages: [{ role: 'user', content: question }],
   });
@@ -209,11 +157,10 @@ Formatting rules (Slack mrkdwn):
     ? message.content[0].text
     : 'I encountered an error. Please contact HR directly.';
 
-  // Convert markdown to Slack mrkdwn
   return raw
-    .replace(/\*\*(.*?)\*\*/g, '*$1*')       // **bold** → *bold*
-    .replace(/^#{1,3}\s+/gm, '')              // remove # headers
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>'); // [text](url) → <url|text>
+    .replace(/\*\*(.*?)\*\*/g, '*$1*')
+    .replace(/^#{1,3}\s+/gm, '')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
 }
 
 // ==================== EVENT HANDLER ====================
@@ -224,10 +171,10 @@ async function handleAppMention(event) {
   const question = event.text.replace(/<@[^>]+>/g, '').trim();
   if (!question) return;
 
-  console.log('Processing app_mention:', question);
+  console.log('Processing question:', question);
 
-  const knowledge = await fetchHRKnowledge(question);
-  const answer = await generateAnswer(question, knowledge);
+  const hrPages = await fetchHRKnowledge();
+  const answer = await generateAnswer(question, hrPages);
 
   await slack.chat.postMessage({
     channel: event.channel,
@@ -258,7 +205,7 @@ async function handleAppMention(event) {
     question,
     response: answer,
     type: 'question',
-    foundAnswer: knowledge.length > 0,
+    foundAnswer: hrPages.length > 0,
   });
 }
 
@@ -346,7 +293,6 @@ module.exports = async (req, res) => {
     return res.status(200).json({ challenge: body.challenge });
   }
 
-  // Button clicks / interactive components
   if (body?.type === 'block_actions') {
     const action = body.actions?.[0];
     if (action?.action_id === 'submit_hr_request') {
@@ -368,7 +314,6 @@ module.exports = async (req, res) => {
     );
   }
 
-  // Respond to DMs without needing @mention
   if (event?.type === 'message' && event.channel_type === 'im' && !event.bot_id && !event.subtype) {
     waitUntil(
       handleAppMention(event).catch((err) =>

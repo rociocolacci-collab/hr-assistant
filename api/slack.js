@@ -74,6 +74,88 @@ All hardware requests go through Bamboo and require manager approval. 3-year ref
 How to request laptop: Contact manager → Manager submits in Bamboo → HR confirms.
 Supplemental equipment: Bamboo → Assets Tab → Equipment Request (if New Hire Allowance unused) or discuss with manager (if already used).
 URL: https://www.notion.so/310f3ed090a480429655ea7efcf06060
+
+=== ANNUAL REVIEW PROCESS ===
+Annual Reviews happen once a year in November/December. dotCMS uses a performance distribution model (Bell Curve) for fair and consistent evaluations.
+
+Performance categories:
+- Exceptional (top 10%): Consistently exceeds all expectations, drives major business impact, inspires others.
+- Exceed Expectations (next 20%): Consistently above expectations, takes initiative, measurable impact beyond core role.
+- Meet Expectations (40% — median): Meets all goals and expectations consistently. This is a great place to be!
+- Below Expectations (next 20%): Occasionally fails to meet expectations, needs improvement and coaching.
+- Low Performer (bottom 10%): Consistently underperforms, may require a performance improvement plan (PIP).
+
+How ratings work — your final rating = Performance (1–5) + Values (A–C):
+- Performance: 1=Exceptional, 2=Exceeds, 3=Meets, 4=Below, 5=Low
+- Values: A=Exemplary (5+ positive ratings, 0 negatives), B=Strong (4+ positive, ≤1 negative), C=Developing (3+ positive, ≤2 negatives)
+- Combined example: 3A = Meets Expectations + Exemplary Values
+
+Process steps:
+1. Self-assessment + Manager assessment in Ninety (covers Values, GWC, Performance, Manager Review, Reflection).
+2. Bell Curve placement by managers and department heads.
+3. Calibration across teams — salary increase % assigned consistently per rating.
+4. 1:1 conversation with manager to share results and align on development priorities.
+URL: https://www.notion.so/322f3ed090a4811b9d21d0e3a9332050
+
+=== CAREER PATH & LEVELS ===
+dotCMS has two career tracks — Individual Contributors (ICs) and Managers. Both are equally valued.
+Levels are based on skills and impact, not tenure alone.
+
+IC Track:
+- L1 Associate/Trainee: Learning basics, needs close guidance. 0–2 years.
+- L2 Junior: Handles routine work more independently, owns defined deliverables. 2–4 years.
+- L3 Mid Level: Executes independently, owns small projects end-to-end. 4+ years.
+- L4 Senior: Drives company objectives, high autonomy, leads small project teams. 7+ years. (Path branches here to Tech Lead or Management)
+- L5 Staff: Technical leader for large cross-functional projects, mentors others, thought leader. 7+ years.
+- L6 Principal: Sets direction for entire domain, shapes company strategy, highest autonomy. 10+ years.
+
+Manager Track (branches from L4 Senior):
+- M1 Manager: Manages small team of ICs, 1-quarter time horizon. 5+ years total.
+- M2 Senior Manager: Manages ICs and possibly other managers, multi-quarter scope. 8+ years.
+- M3 Director: Manages through other managers, drives company-wide impact. 12+ years.
+- M4 Senior Director: Leads full functional business unit, strategic contributions. 15+ years.
+
+Note: Most people exhibit qualities across 2 levels at any time — that's normal.
+URL: https://www.notion.so/345f3ed090a480bbaaf8e322502f8222
+
+=== PROFESSIONAL DEVELOPMENT ===
+Three conversation types guide growth at dotCMS:
+1. Monthly 1:1s — build trust. At least once/month. Personal check-in, wins, blockers, feedback both ways.
+2. Quarterly Career Conversations — 3x/year (Apr, Jul, Oct). Cover Values, GWC (Get it/Want it/Capacity), performance Rocks, and growth questions.
+3. Annual Performance Review — once/year (December). Determines Bell Curve position, career level, and compensation.
+
+GWC Framework:
+- G (Get it): Do you understand your role and its impact?
+- W (Want it): Are you genuinely energized by this work?
+- C (Capacity): Do you have the skills and bandwidth to deliver?
+
+The goal is continuous feedback with no surprises at any stage.
+URL: https://www.notion.so/326f3ed090a48163ae54c9a533644789
+
+=== REMOTE WORK POLICY ===
+dotCMS is a remote-first company. When your work location changes, follow these rules:
+
+Relocation types:
+- Temporary (less than 30 days): Submit in BambooHR at least 5 business days before. Requires manager approval.
+- Extended Temporary (30+ days): Submit written request to Manager + People & Culture at least 30 days before. Reviewed by Department Head.
+- Permanent: Submit to Manager + People & Culture at least 90 days before. May trigger contract changes and/or compensation adjustments.
+
+All relocations require prior approval — moving first and asking later is not compliant.
+Tax and legal implications may apply, especially for permanent moves.
+Set new core collaboration hours with your manager before any move.
+URL: https://www.notion.so/334f3ed090a480a88fe5c607399a192c
+
+=== ONBOARDING ===
+New hire onboarding covers 90 days in 4 phases:
+- Phase 1 (Week 1): Get oriented — setup checklist, meet team, system access.
+- Phase 2 (Weeks 2–4): Learn the ropes — culture, processes, role scope. Day 30 check-in with People & Culture.
+- Phase 3 (Weeks 5–8): Build momentum — start owning work, build relationships.
+- Phase 4 (Weeks 9–12): Own your role — operate independently, Day 90 manager review.
+
+Two tracks run in parallel: General Onboarding (this page) + Role-Specific Guide (Engineering, Product, CX, Sales, Marketing, Professional Services).
+Start with: New Hire General Material (setup checklist, tools, policies).
+Questions? Reach out to People & Culture on Slack anytime.
+URL: https://www.notion.so/328f3ed090a481d18722e8dfed62706b
 `;
 
 // ==================== NOTION ====================

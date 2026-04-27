@@ -206,21 +206,9 @@ async function handleAppMention(event) {
 
   console.log('Processing question:', question);
 
-  // Try to get live Notion content; fall back to hardcoded if it fails
-  let knowledgeText = HR_FALLBACK;
-  try {
-    const hrPages = await fetchHRKnowledge();
-    if (hrPages.length > 0) {
-      knowledgeText = hrPages
-        .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
-        .join('\n\n');
-      console.log(`Loaded ${hrPages.length} pages from Notion`);
-    } else {
-      console.log('No pages loaded from Notion, using fallback');
-    }
-  } catch (err) {
-    console.error('fetchHRKnowledge failed, using fallback:', err.message);
-  }
+  // Use hardcoded knowledge (always reliable)
+  // Notion live-sync can be re-enabled once API access is confirmed
+  const knowledgeText = HR_FALLBACK;
 
   const answer = await generateAnswer(question, knowledgeText);
 

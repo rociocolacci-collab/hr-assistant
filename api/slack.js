@@ -497,6 +497,36 @@ Slack formatting rules:
     .replace(/\[(.*?)\]\((.*?)\)/g, '<$2|$1>');
 }
 
+// ==================== GREETING ====================
+
+const WELCOME_MESSAGE =
+  "Hi! I'm the dotCMS People Assistant. :garland-dot:\nHow can I help you today? Just type your question here in the chat.";
+
+const GREETING_REGEX =
+  /^(hi+|hey+|heya|hiya|hello+|hola+|buenas|howdy|yo|sup|good\s+(morning|afternoon|evening|day)|morning|afternoon|evening|what'?s\s+up|:wave:|👋)[\s!.,;:?~👋🙂😊😄]*$/i;
+
+function isGreeting(text) {
+  return GREETING_REGEX.test(text.trim());
+}
+
+async function sendWelcome(channel, threadTs) {
+  await slack.chat.postMessage({
+    channel,
+    ...(threadTs ? { thread_ts: threadTs } : {}),
+    text: WELCOME_MESSAGE,
+  });
+}
+
+// Fires when the user opens the bot's chat — greet only if the conversation is empty
+async function handleAppHomeOpened(event) {
+  if (event.tab && event.tab !== 'messages') return;
+  if (!event.channel) return;
+  const history = await slack.conversations.history({ channel: event.channel, limit: 1 });
+  if (!history.messages || history.messages.length === 0) {
+    await sendWelcome(event.channel);
+  }
+}
+
 // ==================== EVENT HANDLER ====================
 
 async function handleAppMention(event) {
@@ -504,6 +534,12 @@ async function handleAppMention(event) {
 
   const question = event.text.replace(/<@[^>]+>/g, '').trim();
   if (!question) return;
+
+  if (isGreeting(question)) {
+    // In a DM greet directly; in a channel reply in the mention's thread
+    await sendWelcome(event.channel, event.channel_type === 'im' ? undefined : event.ts);
+    return;
+  }
 
   console.log('Processing question:', question);
 
@@ -663,6 +699,14 @@ module.exports = async (req, res) => {
   }
 
   const event = body?.event;
+
+  if (event?.type === 'app_home_opened') {
+    waitUntil(
+      handleAppHomeOpened(event).catch((err) =>
+        console.error('handleAppHomeOpened error:', err.message)
+      )
+    );
+  }
 
   if (event?.type === 'app_mention') {
     waitUntil(

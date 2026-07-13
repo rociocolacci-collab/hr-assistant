@@ -804,9 +804,9 @@ function requestModalView(selectedType, privateMetadata) {
     label: { type: 'plain_text', text: 'Deadline (optional)' },
     optional: true,
     element: {
-      type: 'plain_text_input',
+      type: 'datepicker',
       action_id: 'deadline_action',
-      placeholder: { type: 'plain_text', text: 'e.g. End of week' },
+      placeholder: { type: 'plain_text', text: 'Pick a date' },
     },
   };
 
@@ -846,6 +846,17 @@ async function handleRequestTypeChange(payload) {
   });
 }
 
+// One-click "add to Google Calendar" link for an all-day event on the deadline
+function gcalDeadlineLink(title, dateStr) {
+  const start = dateStr.replace(/-/g, '');
+  // all-day events use an exclusive end date → the next day
+  const end = new Date(Date.parse(`${dateStr}T00:00:00Z`) + 86400000)
+    .toISOString()
+    .slice(0, 10)
+    .replace(/-/g, '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}`;
+}
+
 async function handleRequestSubmission(payload) {
   const userId = payload.user.id;
   const v = payload.view.state.values;
@@ -863,14 +874,18 @@ async function handleRequestSubmission(payload) {
   }
   const details = v.details_block?.details_action?.value;
   if (details) lines.push(`*Details:* ${details}`);
-  const deadline = v.deadline_block?.deadline_action?.value;
+  const deadline = v.deadline_block?.deadline_action?.selected_date; // YYYY-MM-DD
   if (deadline) lines.push(`*Deadline:* ${deadline}`);
   const summary = lines.join('\n');
 
   if (process.env.SLACK_HR_CHANNEL) {
+    let hrText = `📥 *New HR Request* from <@${userId}>\n${summary}`;
+    if (deadline) {
+      hrText += `\n<${gcalDeadlineLink(`HR Request due: ${typeLabel}`, deadline)}|📅 Add deadline to Google Calendar>`;
+    }
     await slack.chat.postMessage({
       channel: process.env.SLACK_HR_CHANNEL,
-      text: `📥 *New HR Request* from <@${userId}>\n${summary}`,
+      text: hrText,
     });
   }
 

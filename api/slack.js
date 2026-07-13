@@ -557,8 +557,7 @@ async function handleAppMention(event) {
   if (!question) return;
 
   if (isGreeting(question)) {
-    // In a DM greet directly; in a channel reply in the mention's thread
-    await sendWelcome(event.channel, event.channel_type === 'im' ? undefined : event.ts);
+    await sendWelcome(event.channel, event.ts);
     return;
   }
 
@@ -626,10 +625,16 @@ const HR_TEAM = {
 };
 
 // "Talk to HR" → show who covers what, let the person pick who to chat with
+// Thread of the message where the button was clicked (to keep everything grouped)
+function buttonThreadTs(payload) {
+  return payload.message?.thread_ts || payload.message?.ts || undefined;
+}
+
 async function handleTalkToHR(payload) {
   await slack.chat.postEphemeral({
     channel: payload.channel?.id || payload.user.id,
     user: payload.user.id,
+    ...(buttonThreadTs(payload) ? { thread_ts: buttonThreadTs(payload) } : {}),
     text: 'Who should you talk to?',
     blocks: [
       {
@@ -667,6 +672,7 @@ async function handleChatChoice(payload, personKey) {
   await slack.chat.postEphemeral({
     channel: payload.channel?.id || userId,
     user: userId,
+    ...(buttonThreadTs(payload) ? { thread_ts: buttonThreadTs(payload) } : {}),
     text: `${mention} is your go-to for ${person.topics.toLowerCase().replace(/ · /g, ', ')}. Send them a DM — I already gave them a heads-up so they know you'll reach out. :garland-dot:`,
   });
 
@@ -700,7 +706,7 @@ const REQUEST_TYPE_OPTIONS = [
   { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
 ];
 
-function requestModalView(selectedType) {
+function requestModalView(selectedType, privateMetadata) {
   const selected = REQUEST_TYPE_OPTIONS.find((o) => o.value === selectedType);
 
   const typeBlock = {
@@ -810,6 +816,7 @@ function requestModalView(selectedType) {
     title: { type: 'plain_text', text: 'HR Request' },
     submit: { type: 'plain_text', text: 'Submit' },
     close: { type: 'plain_text', text: 'Cancel' },
+    ...(privateMetadata ? { private_metadata: privateMetadata } : {}),
     blocks: [
       typeBlock,
       ...(selectedType === 'employment_certification' ? certBlocks : defaultBlocks),
@@ -819,9 +826,14 @@ function requestModalView(selectedType) {
 }
 
 async function handleSubmitRequest(payload) {
+  // Remember where the button was clicked so the confirmation lands in the same thread
+  const context = JSON.stringify({
+    channel: payload.channel?.id || payload.user.id,
+    thread_ts: buttonThreadTs(payload) || null,
+  });
   await slack.views.open({
     trigger_id: payload.trigger_id,
-    view: requestModalView(),
+    view: requestModalView(undefined, context),
   });
 }
 
@@ -830,7 +842,7 @@ async function handleRequestTypeChange(payload) {
   const selectedType = payload.actions?.[0]?.selected_option?.value;
   await slack.views.update({
     view_id: payload.view.id,
-    view: requestModalView(selectedType),
+    view: requestModalView(selectedType, payload.view.private_metadata),
   });
 }
 
@@ -862,8 +874,15 @@ async function handleRequestSubmission(payload) {
     });
   }
 
+  let ctx = {};
+  try {
+    ctx = JSON.parse(payload.view.private_metadata || '{}');
+  } catch (err) {
+    console.error('Bad private_metadata:', err.message);
+  }
   await slack.chat.postMessage({
-    channel: userId,
+    channel: ctx.channel || userId,
+    ...(ctx.thread_ts ? { thread_ts: ctx.thread_ts } : {}),
     text: `✅ Got it! Your *${typeLabel}* request was sent to People & Culture. We'll get back to you soon.`,
   });
 

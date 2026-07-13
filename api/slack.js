@@ -561,6 +561,20 @@ async function handleAppMention(event) {
     return;
   }
 
+  // Diagnostics: reports which env vars are set (never their values) and the running build
+  if (question.toLowerCase() === 'debug env') {
+    const flags = ['SLACK_HR_CHANNEL', 'SLACK_SOFI_ID', 'SLACK_ROCIO_ID', 'SLACK_TOKEN', 'NOTION_TOKEN', 'CLAUDE_API_KEY']
+      .map((k) => `${k}: ${process.env[k] ? '✅ set' : '❌ missing'}`)
+      .join('\n');
+    const build = process.env.VERCEL_GIT_COMMIT_SHA ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : 'unknown';
+    await slack.chat.postMessage({
+      channel: event.channel,
+      thread_ts: event.ts,
+      text: `🔍 *Deployed build:* ${build}\n${flags}`,
+    });
+    return;
+  }
+
   console.log('Processing question:', question);
 
   // Load knowledge exclusively from Notion (no hardcoded fallback)

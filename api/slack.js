@@ -878,15 +878,33 @@ async function handleRequestSubmission(payload) {
   if (deadline) lines.push(`*Deadline:* ${deadline}`);
   const summary = lines.join('\n');
 
+  let hrText = `📥 *New HR Request* from <@${userId}>\n${summary}`;
+  if (deadline) {
+    hrText += `\n<${gcalDeadlineLink(`HR Request due: ${typeLabel}`, deadline)}|📅 Add deadline to Google Calendar>`;
+  }
+
+  let delivered = false;
   if (process.env.SLACK_HR_CHANNEL) {
-    let hrText = `📥 *New HR Request* from <@${userId}>\n${summary}`;
-    if (deadline) {
-      hrText += `\n<${gcalDeadlineLink(`HR Request due: ${typeLabel}`, deadline)}|📅 Add deadline to Google Calendar>`;
+    try {
+      await slack.chat.postMessage({ channel: process.env.SLACK_HR_CHANNEL, text: hrText });
+      delivered = true;
+    } catch (err) {
+      console.error('HR channel post failed:', err.message);
     }
-    await slack.chat.postMessage({
-      channel: process.env.SLACK_HR_CHANNEL,
-      text: hrText,
-    });
+  } else {
+    console.error('SLACK_HR_CHANNEL is not set');
+  }
+  if (!delivered) {
+    // Never lose a request: fall back to DMing the People team directly
+    for (const envKey of ['SLACK_SOFI_ID', 'SLACK_ROCIO_ID']) {
+      const memberId = process.env[envKey];
+      if (!memberId) continue;
+      try {
+        await slack.chat.postMessage({ channel: memberId, text: `${hrText}\n_(sent by DM because the HR channel is unreachable)_` });
+      } catch (err) {
+        console.error(`Fallback DM to ${envKey} failed:`, err.message);
+      }
+    }
   }
 
   let ctx = {};

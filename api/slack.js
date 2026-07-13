@@ -510,11 +510,31 @@ function isGreeting(text) {
   return GREETING_REGEX.test(text.trim());
 }
 
+const ACTION_BUTTONS = {
+  type: 'actions',
+  elements: [
+    {
+      type: 'button',
+      text: { type: 'plain_text', text: 'Make a request' },
+      action_id: 'submit_hr_request',
+    },
+    {
+      type: 'button',
+      text: { type: 'plain_text', text: 'Talk to HR' },
+      action_id: 'escalate_to_hr',
+    },
+  ],
+};
+
 async function sendWelcome(channel, threadTs) {
   await slack.chat.postMessage({
     channel,
     ...(threadTs ? { thread_ts: threadTs } : {}),
     text: WELCOME_MESSAGE,
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text: WELCOME_MESSAGE } },
+      ACTION_BUTTONS,
+    ],
   });
 }
 
@@ -577,21 +597,7 @@ async function handleAppMention(event) {
     text: answer,
     blocks: [
       { type: 'section', text: { type: 'mrkdwn', text: answer } },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Make a request' },
-            action_id: 'submit_hr_request',
-          },
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Talk to HR' },
-            action_id: 'escalate_to_hr',
-          },
-        ],
-      },
+      ACTION_BUTTONS,
     ],
   });
 

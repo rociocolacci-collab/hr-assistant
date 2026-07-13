@@ -453,6 +453,7 @@ CONTENT RULES:
 - Every answer must include the link to the Notion page it came from (each knowledge base section has its URL). Add at most ONE extra link, only if the person needs it to act (a form, BambooHR, a calendar).
 - No follow-up questions by default. Only add ONE short follow-up if the question was ambiguous and the answer genuinely branches (e.g. "Primary or secondary caregiver?").
 - If something is truly not covered in the knowledge base, say so in one line and point to People & Culture.
+- If the person keeps insisting on or rephrasing the same question and you can't resolve it with the knowledge base, don't loop: warmly tell them this one is better handled directly by People & Culture (they can use the "Talk to HR" button below).
 - Interpret misspellings from context ("whay" = "what", "mamager" = "manager"). Never let a typo derail comprehension or produce a confused answer — answer what the person clearly meant.
 
 TONE RULES (people-first):
@@ -581,7 +582,7 @@ async function handleAppMention(event) {
         elements: [
           {
             type: 'button',
-            text: { type: 'plain_text', text: 'Submit HR Request' },
+            text: { type: 'plain_text', text: 'Make a request' },
             action_id: 'submit_hr_request',
           },
           {
@@ -605,76 +606,267 @@ async function handleAppMention(event) {
 
 // ==================== BUTTON HANDLERS ====================
 
-async function handleSubmitRequest(payload) {
-  await slack.views.open({
-    trigger_id: payload.trigger_id,
-    view: {
-      type: 'modal',
-      callback_id: 'hr_request_modal',
-      title: { type: 'plain_text', text: 'HR Request' },
-      submit: { type: 'plain_text', text: 'Submit' },
-      close: { type: 'plain_text', text: 'Cancel' },
-      blocks: [
-        {
-          type: 'input',
-          block_id: 'request_type_block',
-          label: { type: 'plain_text', text: 'Request Type' },
-          element: {
-            type: 'static_select',
-            action_id: 'request_type_action',
-            placeholder: { type: 'plain_text', text: 'Select a type' },
-            options: [
-              { text: { type: 'plain_text', text: 'Employment Verification' }, value: 'employment_verification' },
-              { text: { type: 'plain_text', text: 'Salary Certificate' }, value: 'salary_certificate' },
-              { text: { type: 'plain_text', text: 'Document Request' }, value: 'document_request' },
-              { text: { type: 'plain_text', text: 'Policy Clarification' }, value: 'policy_clarification' },
-              { text: { type: 'plain_text', text: 'Benefits Question' }, value: 'benefits_question' },
-              { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
-            ],
-          },
+const HR_TEAM = {
+  sofi: {
+    name: 'Sofi Mendieta',
+    idEnv: 'SLACK_SOFI_ID',
+    topics: 'Onboarding · Payroll · Internal Activities · Quarterly Conversations · People Processes',
+  },
+  rocio: {
+    name: 'Rocío Colacci',
+    idEnv: 'SLACK_ROCIO_ID',
+    topics: 'Performance · Departmental Structure · Retention · Compensation · Recruiting · Culture',
+  },
+};
+
+// "Talk to HR" → show who covers what, let the person pick who to chat with
+async function handleTalkToHR(payload) {
+  await slack.chat.postEphemeral({
+    channel: payload.channel?.id || payload.user.id,
+    user: payload.user.id,
+    text: 'Who should you talk to?',
+    blocks: [
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: 'Happy to connect you! Pick the person who covers your topic:' },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*${HR_TEAM.sofi.name}*\n${HR_TEAM.sofi.topics}` },
+        accessory: {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Chat with Sofi' },
+          action_id: 'chat_with_sofi',
         },
-        {
-          type: 'input',
-          block_id: 'details_block',
-          label: { type: 'plain_text', text: 'Details' },
-          element: {
-            type: 'plain_text_input',
-            action_id: 'details_action',
-            multiline: true,
-            placeholder: { type: 'plain_text', text: 'Describe your request...' },
-          },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*${HR_TEAM.rocio.name}*\n${HR_TEAM.rocio.topics}` },
+        accessory: {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Chat with Rocío' },
+          action_id: 'chat_with_rocio',
         },
-        {
-          type: 'input',
-          block_id: 'deadline_block',
-          label: { type: 'plain_text', text: 'Deadline (optional)' },
-          optional: true,
-          element: {
-            type: 'plain_text_input',
-            action_id: 'deadline_action',
-            placeholder: { type: 'plain_text', text: 'e.g. End of week' },
-          },
-        },
-      ],
-    },
+      },
+    ],
   });
 }
 
-async function handleEscalate(payload) {
+async function handleChatChoice(payload, personKey) {
+  const person = HR_TEAM[personKey];
   const userId = payload.user.id;
-  const hrChannel = process.env.SLACK_HR_CHANNEL;
-
-  if (hrChannel) {
-    await slack.chat.postMessage({
-      channel: hrChannel,
-      text: `*Escalation Request*\nUser <@${userId}> needs HR assistance.`,
-    });
-  }
+  const personId = process.env[person.idEnv];
+  const mention = personId ? `<@${personId}>` : `*${person.name}*`;
 
   await slack.chat.postEphemeral({
     channel: payload.channel?.id || userId,
     user: userId,
-    text: '✅ Your request has been sent to HR. They will reach out to you soon.',
+    text: `${mention} is your go-to for ${person.topics.toLowerCase().replace(/ · /g, ', ')}. Send them a DM — I already gave them a heads-up so they know you'll reach out. :garland-dot:`,
+  });
+
+  // Heads-up to the chosen person (DM if we have their ID, HR channel as fallback)
+  const headsUp = `👋 <@${userId}> would like to chat with you (via People Assistant).`;
+  if (personId) {
+    await slack.chat.postMessage({ channel: personId, text: headsUp });
+  } else if (process.env.SLACK_HR_CHANNEL) {
+    await slack.chat.postMessage({
+      channel: process.env.SLACK_HR_CHANNEL,
+      text: `👋 <@${userId}> would like to chat with *${person.name}* (via People Assistant).`,
+    });
+  }
+
+  await logInteraction({
+    userId,
+    question: `Talk to HR: chose ${person.name}`,
+    response: 'Redirected to DM',
+    type: 'escalation',
+    foundAnswer: true,
+  });
+}
+
+// ==================== HR REQUEST MODAL ====================
+
+const REQUEST_TYPE_OPTIONS = [
+  { text: { type: 'plain_text', text: 'Employment Certification' }, value: 'employment_certification' },
+  { text: { type: 'plain_text', text: 'Document Request' }, value: 'document_request' },
+  { text: { type: 'plain_text', text: 'Policy Clarification' }, value: 'policy_clarification' },
+  { text: { type: 'plain_text', text: 'Benefits Question' }, value: 'benefits_question' },
+  { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
+];
+
+function requestModalView(selectedType) {
+  const selected = REQUEST_TYPE_OPTIONS.find((o) => o.value === selectedType);
+
+  const typeBlock = {
+    type: 'input',
+    block_id: 'request_type_block',
+    dispatch_action: true,
+    label: { type: 'plain_text', text: 'Request Type' },
+    element: {
+      type: 'static_select',
+      action_id: 'request_type_action',
+      placeholder: { type: 'plain_text', text: 'Select a type' },
+      options: REQUEST_TYPE_OPTIONS,
+      ...(selected ? { initial_option: selected } : {}),
+    },
+  };
+
+  // Employment Certification asks its own follow-ups; other types get a free-text field
+  const certBlocks = [
+    {
+      type: 'input',
+      block_id: 'cert_include_block',
+      optional: true,
+      label: { type: 'plain_text', text: 'What should it include?' },
+      element: {
+        type: 'checkboxes',
+        action_id: 'cert_include_action',
+        options: [
+          { text: { type: 'plain_text', text: 'Salary' }, value: 'salary' },
+          { text: { type: 'plain_text', text: 'Hire date' }, value: 'hire_date' },
+        ],
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'cert_language_block',
+      label: { type: 'plain_text', text: 'Language' },
+      element: {
+        type: 'static_select',
+        action_id: 'cert_language_action',
+        placeholder: { type: 'plain_text', text: 'Select a language' },
+        options: [
+          { text: { type: 'plain_text', text: 'English' }, value: 'english' },
+          { text: { type: 'plain_text', text: 'Español' }, value: 'spanish' },
+        ],
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'cert_purpose_block',
+      label: { type: 'plain_text', text: 'What is it for?' },
+      element: {
+        type: 'static_select',
+        action_id: 'cert_purpose_action',
+        placeholder: { type: 'plain_text', text: 'Select a purpose' },
+        options: [
+          { text: { type: 'plain_text', text: 'Bank' }, value: 'bank' },
+          { text: { type: 'plain_text', text: 'Visa / Embassy' }, value: 'visa_embassy' },
+          { text: { type: 'plain_text', text: 'Rental / Landlord' }, value: 'rental' },
+          { text: { type: 'plain_text', text: 'Government / Tax office' }, value: 'government' },
+          { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
+        ],
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'details_block',
+      optional: true,
+      label: { type: 'plain_text', text: 'Anything else we should know?' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'details_action',
+        multiline: true,
+        placeholder: { type: 'plain_text', text: 'e.g. it must be addressed to a specific bank' },
+      },
+    },
+  ];
+
+  const defaultBlocks = [
+    {
+      type: 'input',
+      block_id: 'details_block',
+      label: { type: 'plain_text', text: 'Details' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'details_action',
+        multiline: true,
+        placeholder: { type: 'plain_text', text: 'Describe your request...' },
+      },
+    },
+  ];
+
+  const deadlineBlock = {
+    type: 'input',
+    block_id: 'deadline_block',
+    label: { type: 'plain_text', text: 'Deadline (optional)' },
+    optional: true,
+    element: {
+      type: 'plain_text_input',
+      action_id: 'deadline_action',
+      placeholder: { type: 'plain_text', text: 'e.g. End of week' },
+    },
+  };
+
+  return {
+    type: 'modal',
+    callback_id: 'hr_request_modal',
+    title: { type: 'plain_text', text: 'HR Request' },
+    submit: { type: 'plain_text', text: 'Submit' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks: [
+      typeBlock,
+      ...(selectedType === 'employment_certification' ? certBlocks : defaultBlocks),
+      deadlineBlock,
+    ],
+  };
+}
+
+async function handleSubmitRequest(payload) {
+  await slack.views.open({
+    trigger_id: payload.trigger_id,
+    view: requestModalView(),
+  });
+}
+
+// Re-render the modal when the request type changes
+async function handleRequestTypeChange(payload) {
+  const selectedType = payload.actions?.[0]?.selected_option?.value;
+  await slack.views.update({
+    view_id: payload.view.id,
+    view: requestModalView(selectedType),
+  });
+}
+
+async function handleRequestSubmission(payload) {
+  const userId = payload.user.id;
+  const v = payload.view.state.values;
+  const type = v.request_type_block?.request_type_action?.selected_option;
+  const typeLabel = type?.text?.text || 'Unknown';
+
+  const lines = [`*Type:* ${typeLabel}`];
+  if (type?.value === 'employment_certification') {
+    const includes = (v.cert_include_block?.cert_include_action?.selected_options || []).map(
+      (o) => o.text.text
+    );
+    lines.push(`*Include:* ${includes.length ? includes.join(', ') : 'Standard (no salary, no hire date)'}`);
+    lines.push(`*Language:* ${v.cert_language_block?.cert_language_action?.selected_option?.text?.text || '—'}`);
+    lines.push(`*Purpose:* ${v.cert_purpose_block?.cert_purpose_action?.selected_option?.text?.text || '—'}`);
+  }
+  const details = v.details_block?.details_action?.value;
+  if (details) lines.push(`*Details:* ${details}`);
+  const deadline = v.deadline_block?.deadline_action?.value;
+  if (deadline) lines.push(`*Deadline:* ${deadline}`);
+  const summary = lines.join('\n');
+
+  if (process.env.SLACK_HR_CHANNEL) {
+    await slack.chat.postMessage({
+      channel: process.env.SLACK_HR_CHANNEL,
+      text: `📥 *New HR Request* from <@${userId}>\n${summary}`,
+    });
+  }
+
+  await slack.chat.postMessage({
+    channel: userId,
+    text: `✅ Got it! Your *${typeLabel}* request was sent to People & Culture. We'll get back to you soon.`,
+  });
+
+  await logInteraction({
+    userId,
+    question: summary.replace(/\*/g, ''),
+    response: 'Request sent to HR',
+    type: 'hr_request',
+    foundAnswer: true,
   });
 }
 
@@ -687,14 +879,39 @@ module.exports = async (req, res) => {
     return res.status(200).json({ challenge: body.challenge });
   }
 
-  if (body?.type === 'block_actions') {
-    const action = body.actions?.[0];
-    if (action?.action_id === 'submit_hr_request') {
-      waitUntil(handleSubmitRequest(body).catch((err) => console.error('handleSubmitRequest error:', err.message)));
+  // Slack sends interactive payloads (buttons, modals) form-encoded as payload=<json>
+  let interactive = null;
+  if (typeof body?.payload === 'string') {
+    try {
+      interactive = JSON.parse(body.payload);
+    } catch (err) {
+      console.error('Failed to parse interactive payload:', err.message);
     }
-    if (action?.action_id === 'escalate_to_hr') {
-      waitUntil(handleEscalate(body).catch((err) => console.error('handleEscalate error:', err.message)));
+  } else if (body?.type === 'block_actions' || body?.type === 'view_submission') {
+    interactive = body;
+  }
+
+  if (interactive?.type === 'block_actions') {
+    const action = interactive.actions?.[0];
+    const route = {
+      submit_hr_request: () => handleSubmitRequest(interactive),
+      escalate_to_hr: () => handleTalkToHR(interactive),
+      chat_with_sofi: () => handleChatChoice(interactive, 'sofi'),
+      chat_with_rocio: () => handleChatChoice(interactive, 'rocio'),
+      request_type_action: () => handleRequestTypeChange(interactive),
+    }[action?.action_id];
+    if (route) {
+      waitUntil(route().catch((err) => console.error(`${action.action_id} error:`, err.message)));
     }
+    return res.status(200).send();
+  }
+
+  if (interactive?.type === 'view_submission' && interactive.view?.callback_id === 'hr_request_modal') {
+    waitUntil(
+      handleRequestSubmission(interactive).catch((err) =>
+        console.error('handleRequestSubmission error:', err.message)
+      )
+    );
     return res.status(200).send();
   }
 

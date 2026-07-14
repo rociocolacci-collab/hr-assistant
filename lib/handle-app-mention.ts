@@ -1,8 +1,8 @@
 import type { AppMentionEvent } from '@slack/web-api';
-import { client, getThread } from './slack-utils';
+import { client, getThread, sendDebugEnv, sendWelcome } from './slack-utils';
 import { generateResponse } from './generate-response';
 import { logInteraction } from './notion';
-import { answerBlocks, NOTION_ERROR_MESSAGE } from './slack-blocks';
+import { answerBlocks, isGreeting, NOTION_ERROR_MESSAGE } from './slack-blocks';
 
 async function createStatusUpdater(event: AppMentionEvent) {
   const initialMessage = await client.chat.postMessage({
@@ -32,6 +32,18 @@ export async function handleNewAppMention(event: AppMentionEvent, botUserId: str
 
   const question = event.text.replace(/<@[^>]+>/g, '').trim();
   if (!question) return;
+
+  const threadForReply = event.thread_ts ?? event.ts;
+
+  if (isGreeting(question)) {
+    await sendWelcome(event.channel, threadForReply);
+    return;
+  }
+
+  if (question.toLowerCase() === 'debug env') {
+    await sendDebugEnv(event.channel, threadForReply);
+    return;
+  }
 
   console.log('Processing question:', question);
 

@@ -1,8 +1,10 @@
 import { waitUntil } from '@vercel/functions';
 import {
-  handleEscalate,
+  handleChatChoice,
+  handleRequestSubmission,
+  handleRequestTypeChange,
   handleSubmitRequest,
-  handleViewSubmission,
+  handleTalkToHR,
   type BlockActionPayload,
   type ViewSubmissionPayload,
 } from '../lib/hr-actions';
@@ -21,19 +23,19 @@ export async function POST(request: Request) {
 
     if (payload.type === 'block_actions') {
       const action = payload.actions?.[0];
+      const route: Record<string, () => Promise<void>> = {
+        submit_hr_request: () => handleSubmitRequest(payload),
+        escalate_to_hr: () => handleTalkToHR(payload),
+        chat_with_sofi: () => handleChatChoice(payload, 'sofi'),
+        chat_with_rocio: () => handleChatChoice(payload, 'rocio'),
+        request_type_action: () => handleRequestTypeChange(payload),
+      };
 
-      if (action?.action_id === 'submit_hr_request') {
+      const handler = action?.action_id ? route[action.action_id] : undefined;
+      if (handler) {
         waitUntil(
-          handleSubmitRequest(payload).catch((err) =>
-            console.error('handleSubmitRequest error:', err)
-          )
-        );
-      }
-
-      if (action?.action_id === 'escalate_to_hr') {
-        waitUntil(
-          handleEscalate(payload).catch((err) =>
-            console.error('handleEscalate error:', err)
+          handler().catch((err) =>
+            console.error(`${action?.action_id} error:`, err)
           )
         );
       }
@@ -41,10 +43,13 @@ export async function POST(request: Request) {
       return new Response('', { status: 200 });
     }
 
-    if (payload.type === 'view_submission') {
+    if (
+      payload.type === 'view_submission' &&
+      payload.view?.callback_id === 'hr_request_modal'
+    ) {
       waitUntil(
-        handleViewSubmission(payload).catch((err) =>
-          console.error('handleViewSubmission error:', err)
+        handleRequestSubmission(payload).catch((err) =>
+          console.error('handleRequestSubmission error:', err)
         )
       );
 

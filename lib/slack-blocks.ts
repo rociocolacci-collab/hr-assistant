@@ -6,7 +6,7 @@ export function actionButtonsBlock(): KnownBlock {
     elements: [
       {
         type: 'button',
-        text: { type: 'plain_text', text: 'Submit HR Request' },
+        text: { type: 'plain_text', text: 'Make a request' },
         action_id: 'submit_hr_request',
       },
       {
@@ -23,6 +23,23 @@ export function answerBlocks(answer: string): (KnownBlock | Block)[] {
     { type: 'section', text: { type: 'mrkdwn', text: answer } },
     actionButtonsBlock(),
   ];
+}
+
+export const WELCOME_MESSAGE =
+  "Hi! I'm the dotCMS People Assistant. :garland-dot:\nHow can I help you today? Just type your question here in the chat.";
+
+export function welcomeBlocks(): (KnownBlock | Block)[] {
+  return [
+    { type: 'section', text: { type: 'mrkdwn', text: WELCOME_MESSAGE } },
+    actionButtonsBlock(),
+  ];
+}
+
+const GREETING_REGEX =
+  /^(hi+|hey+|heya|hiya|hello+|hola+|buenas|howdy|yo|sup|good\s+(morning|afternoon|evening|day)|morning|afternoon|evening|what'?s\s+up|:wave:|👋)[\s!.,;:?~👋🙂😊😄]*$/i;
+
+export function isGreeting(text: string): boolean {
+  return GREETING_REGEX.test(text.trim());
 }
 
 export const NOTION_ERROR_MESSAGE =

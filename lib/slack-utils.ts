@@ -1,10 +1,42 @@
 import { WebClient } from '@slack/web-api';
 import type { CoreMessage } from 'ai';
 import crypto from 'crypto';
+import { WELCOME_MESSAGE, welcomeBlocks } from './slack-blocks';
 
 const signingSecret = process.env.SLACK_SIGNING_SECRET;
 
 export const client = new WebClient(process.env.SLACK_TOKEN);
+
+export async function sendWelcome(channel: string, threadTs?: string): Promise<void> {
+  await client.chat.postMessage({
+    channel,
+    ...(threadTs ? { thread_ts: threadTs } : {}),
+    text: WELCOME_MESSAGE,
+    blocks: welcomeBlocks(),
+  });
+}
+
+// Diagnostics: reports which env vars are set (never their values) and the running build
+export async function sendDebugEnv(channel: string, threadTs?: string): Promise<void> {
+  const flags = [
+    'SLACK_HR_CHANNEL',
+    'SLACK_SOFI_ID',
+    'SLACK_ROCIO_ID',
+    'SLACK_TOKEN',
+    'NOTION_TOKEN',
+    'CLAUDE_API_KEY',
+  ]
+    .map((k) => `${k}: ${process.env[k] ? '✅ set' : '❌ missing'}`)
+    .join('\n');
+  const build = process.env.VERCEL_GIT_COMMIT_SHA
+    ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)
+    : 'unknown';
+  await client.chat.postMessage({
+    channel,
+    ...(threadTs ? { thread_ts: threadTs } : {}),
+    text: `🔍 *Deployed build:* ${build}\n${flags}`,
+  });
+}
 
 export async function isValidSlackRequest({
   request,

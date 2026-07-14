@@ -2,6 +2,7 @@ import type { SlackEvent } from '@slack/web-api';
 import { waitUntil } from '@vercel/functions';
 import { handleNewAppMention } from '../lib/handle-app-mention';
 import { handleDirectMessage } from '../lib/handle-messages';
+import { handleAppHomeOpened } from '../lib/handle-app-home';
 import { getBotId, verifyRequest } from '../lib/slack-utils';
 
 export async function POST(request: Request) {
@@ -23,6 +24,14 @@ export async function POST(request: Request) {
 
     if (!event) {
       return new Response('Success!', { status: 200 });
+    }
+
+    if (event.type === 'app_home_opened') {
+      waitUntil(
+        handleAppHomeOpened(event).catch((err) =>
+          console.error('handleAppHomeOpened error:', err)
+        )
+      );
     }
 
     if (event.type === 'app_mention') {

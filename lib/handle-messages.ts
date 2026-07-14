@@ -1,8 +1,8 @@
 import type { GenericMessageEvent } from '@slack/web-api';
-import { client, getThread } from './slack-utils';
+import { client, getThread, sendDebugEnv, sendWelcome } from './slack-utils';
 import { generateResponse } from './generate-response';
 import { logInteraction } from './notion';
-import { answerBlocks, NOTION_ERROR_MESSAGE } from './slack-blocks';
+import { answerBlocks, isGreeting, NOTION_ERROR_MESSAGE } from './slack-blocks';
 
 export async function handleDirectMessage(event: GenericMessageEvent, botUserId: string) {
   if (
@@ -17,10 +17,20 @@ export async function handleDirectMessage(event: GenericMessageEvent, botUserId:
   const question = event.text?.replace(/<@[^>]+>/g, '').trim();
   if (!question) return;
 
-  console.log('Processing DM:', question);
-
   const threadTs = event.thread_ts ?? event.ts;
   const { channel } = event;
+
+  if (isGreeting(question)) {
+    await sendWelcome(channel, threadTs);
+    return;
+  }
+
+  if (question.toLowerCase() === 'debug env') {
+    await sendDebugEnv(channel, threadTs);
+    return;
+  }
+
+  console.log('Processing DM:', question);
 
   const initialMessage = await client.chat.postMessage({
     channel,

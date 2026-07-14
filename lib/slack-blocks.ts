@@ -26,7 +26,7 @@ export function answerBlocks(answer: string): (KnownBlock | Block)[] {
 }
 
 export const WELCOME_MESSAGE =
-  "Hi! I'm the dotCMS People Assistant. :garland-dot:\nHow can I help you today? Just type your question here in the chat.";
+  'Hi! How can I help you today?\n_Just type your question here in the chat._';
 
 export function welcomeBlocks(): (KnownBlock | Block)[] {
   return [

@@ -26,7 +26,7 @@ export function answerBlocks(answer: string): (KnownBlock | Block)[] {
 }
 
 export const WELCOME_MESSAGE =
-  'Hi! How can I help you today?\n_Just type your question here in the chat._';
+  'Hi! :wave: How can I help you today?\n_Just type your questions here in the chat!_';
 
 export function welcomeBlocks(): (KnownBlock | Block)[] {
   return [

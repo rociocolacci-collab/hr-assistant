@@ -197,6 +197,39 @@ export async function handleRequestTypeChange(payload: BlockActionPayload): Prom
   });
 }
 
+// Creates the deadline event automatically via the Google Apps Script webhook
+// (CALENDAR_WEBHOOK_URL). Returns false when unset or failing, so the caller
+// can fall back to the one-click link.
+async function createDeadlineEvent(
+  title: string,
+  dateStr: string,
+  description: string
+): Promise<boolean> {
+  const url = process.env.CALENDAR_WEBHOOK_URL;
+  if (!url) return false;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: process.env.CALENDAR_WEBHOOK_SECRET || '',
+        title,
+        date: dateStr,
+        description,
+      }),
+    });
+    const body = await res.text();
+    if (!res.ok || !body.includes('ok')) {
+      console.error(`Calendar webhook rejected: ${res.status} ${body.slice(0, 200)}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Calendar webhook failed:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
 // One-click "add to Google Calendar" link for an all-day event on the deadline
 function gcalDeadlineLink(title: string, dateStr: string): string {
   const start = dateStr.replace(/-/g, '');
@@ -235,7 +268,15 @@ export async function handleRequestSubmission(payload: ViewSubmissionPayload): P
 
   let hrText = `📥 *New HR Request* from <@${userId}>\n${summary}`;
   if (deadline) {
-    hrText += `\n<${gcalDeadlineLink(`HR Request due: ${typeLabel}`, deadline)}|📅 Add deadline to Google Calendar>`;
+    const eventTitle = `HR Request due: ${typeLabel}`;
+    const eventCreated = await createDeadlineEvent(
+      eventTitle,
+      deadline,
+      `Requested via People Assistant by <@${userId}>\n\n${summary.replace(/\*/g, '')}`
+    );
+    hrText += eventCreated
+      ? '\n📅 Deadline event added to Google Calendar'
+      : `\n<${gcalDeadlineLink(eventTitle, deadline)}|📅 Add deadline to Google Calendar>`;
   }
 
   let delivered = false;

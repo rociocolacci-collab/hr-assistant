@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "AI-powered HR Assistant for Slack with Notion integration",
   "scripts": {
-    "build": "mkdir -p dist && touch dist/.keep",
+    "build": "mkdir -p public && touch public/.keep",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

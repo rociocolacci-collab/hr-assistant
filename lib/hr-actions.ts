@@ -51,8 +51,6 @@ function buttonThreadTs(payload: BlockActionPayload): string | undefined {
 const REQUEST_TYPE_OPTIONS: PlainTextOption[] = [
   { text: { type: 'plain_text', text: 'Employment Certification' }, value: 'employment_certification' },
   { text: { type: 'plain_text', text: 'Document Request' }, value: 'document_request' },
-  { text: { type: 'plain_text', text: 'Policy Clarification' }, value: 'policy_clarification' },
-  { text: { type: 'plain_text', text: 'Benefits Question' }, value: 'benefits_question' },
   { text: { type: 'plain_text', text: 'Other' }, value: 'other' },
 ];
 

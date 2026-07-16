@@ -8,35 +8,9 @@ const NOTION_DB_IDS = {
   INTERACTIONS_LOG: process.env.NOTION_INTERACTIONS_LOG_ID,
 };
 
-export const HR_PAGE_IDS = [
-  '26ff3ed090a480debaebdd96c4fa8b7c',
-  '271f3ed090a48061a4b7cafff6cc4c98',
-  '271f3ed090a480a8af28dae5feb8e6cd',
-  '328f3ed090a481a0858aec4e2c81058f',
-  '310f3ed090a480429655ea7efcf06060',
-  '334f3ed090a480268a76d0817f4e56fe',
-  '326f3ed090a480f8bda5f37b6927d564',
-  'b5bbce16fd2444a191ed5ea465a6bc86',
-  '328f3ed090a481d18722e8dfed62706b',
-  '326f3ed090a48003aa67e0269c1eb9b6',
-  '328f3ed090a481a1b233d108ea50f5f1',
-  '345f3ed090a480bbaaf8e322502f8222',
-  '326f3ed090a48163ae54c9a533644789',
-  '322f3ed090a4811b9d21d0e3a9332050',
-  '334f3ed090a481f8951ad5b89360ba8c',
-  '334f3ed090a480a88fe5c607399a192c',
-  '278f3ed090a480a3a9a0df1ec03e198b',
-  '328f3ed090a481948026c0cf78987b5d',
-  '328f3ed090a481918794df886bad2409',
-  '26ff3ed090a480d7bcf9dcb810571429',
-  '333f3ed090a480ac85b0ef8eec74fc0a',
-  '322f3ed090a48010a5dae4c57fdef597',
-  '333f3ed090a481dbbe9ed6c769a5e5e9',
-  '33ef3ed090a4801d88f7e974b46dabd8',
-  '272f3ed090a480569866d26a62caae7a',
-  '272f3ed090a480fcaba4f5b246aaadf8',
-  '272f3ed090a4806aa0bdd172cd83fe09',
-];
+const KNOWLEDGE_TTL_MS = 60 * 60 * 1000; // 1h
+
+let knowledgeCache: { text: string; expiresAt: number } | null = null;
 
 export type HRPage = {
   title: string;
@@ -135,11 +109,35 @@ function getPageTitle(pageMeta: Awaited<ReturnType<typeof notionClient.pages.ret
   return 'HR Policy';
 }
 
+async function discoverHRPageIds(): Promise<string[]> {
+  const pageIds: string[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const res = await notionClient.search({
+      filter: { property: 'object', value: 'page' },
+      start_cursor: cursor,
+      page_size: 100,
+    });
+
+    for (const result of res.results) {
+      if (result.object === 'page' && 'id' in result) {
+        pageIds.push(result.id);
+      }
+    }
+
+    cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
+  } while (cursor);
+
+  return pageIds;
+}
+
 export async function fetchHRKnowledge(): Promise<HRPage[]> {
+  const pageIds = await discoverHRPageIds();
   const pages: HRPage[] = [];
 
   await Promise.all(
-    HR_PAGE_IDS.map(async (pageId) => {
+    pageIds.map(async (pageId) => {
       try {
         const [pageMeta, blocks] = await Promise.all([
           notionClient.pages.retrieve({ page_id: pageId }),
@@ -165,15 +163,27 @@ export async function fetchHRKnowledge(): Promise<HRPage[]> {
 }
 
 export async function buildKnowledgeText(): Promise<string> {
+  if (knowledgeCache && Date.now() < knowledgeCache.expiresAt) {
+    return knowledgeCache.text;
+  }
+
   const hrPages = await fetchHRKnowledge();
 
   if (hrPages.length === 0) {
+    knowledgeCache = null;
     return '';
   }
 
-  return hrPages
+  const text = hrPages
     .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
     .join('\n\n');
+
+  knowledgeCache = {
+    text,
+    expiresAt: Date.now() + KNOWLEDGE_TTL_MS,
+  };
+
+  return text;
 }
 
 export async function logInteraction(data: InteractionLog): Promise<void> {

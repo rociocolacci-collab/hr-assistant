@@ -12,7 +12,7 @@ HR Assistant es un bot de Slack para dotCMS: responde preguntas de People & Cult
 |---------|----------------|
 | [`api/events.ts`](api/events.ts) | Event Subscriptions: `app_mention`, DMs |
 | [`api/interactions.ts`](api/interactions.ts) | Botones y modals Slack |
-| [`lib/notion.ts`](lib/notion.ts) | `HR_PAGE_IDS`, fetch Notion, logging, `createHRRequest` |
+| [`lib/notion.ts`](lib/notion.ts) | Search API Notion, cache knowledge, logging, `createHRRequest` |
 | [`lib/generate-response.ts`](lib/generate-response.ts) | AI SDK + system prompt + formateo mrkdwn |
 | [`lib/handle-app-mention.ts`](lib/handle-app-mention.ts) | Flujo @mention |
 | [`lib/handle-messages.ts`](lib/handle-messages.ts) | Flujo DM |
@@ -31,7 +31,7 @@ HR Assistant es un bot de Slack para dotCMS: responde preguntas de People & Cult
 
 ## Knowledge de Notion
 
-La base de conocimiento es `HR_PAGE_IDS` en [`lib/notion.ts`](lib/notion.ts). Para añadir/quitar políticas: edita esa lista y asegura acceso de la integración Notion.
+La base de conocimiento se descubre dinámicamente en [`lib/notion.ts`](lib/notion.ts) vía Notion Search API: todas las páginas compartidas con la integración. El texto se cachea en memoria 1h. Para añadir/quitar políticas: comparte o revoca acceso de la integración a las páginas en Notion.
 
 ## Variables de entorno
 
@@ -41,14 +41,14 @@ No hardcodees secrets.
 
 ## Endpoints Slack (post-refactor)
 
-- Events: `/api/events` (antes `/api/slack`)
+- Events: `/api/events`
 - Interactivity: `/api/interactions`
 
 ## Qué no hacer
 
 - No volver a un monolito en un solo archivo.
 - No alargar el system prompt ni subir `maxTokens` sin necesidad.
-- No inventar búsqueda por database; el diseño es page IDs fijos.
+- No inventar búsqueda por database para el knowledge; el diseño es Search API + cache en memoria.
 - No commitear `.env` ni tokens.
 
 ## Verificación

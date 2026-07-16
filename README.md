@@ -25,7 +25,7 @@ Flujo de Q&A:
 2. Slack hace `POST` a `/api/events`.
 3. Vercel responde `200` de inmediato; el trabajo continúa con `waitUntil`.
 4. Se verifica la firma de Slack (`SLACK_SIGNING_SECRET`).
-5. Se cargan en paralelo las páginas HR de `HR_PAGE_IDS` desde Notion.
+5. Se descubren y cargan en paralelo las páginas HR compartidas con la integración Notion (Search API; cache 1h).
 6. Claude genera una respuesta corta vía AI SDK.
 7. El bot responde en el thread con botones **Submit HR Request** y **Talk to HR**.
 
@@ -62,8 +62,8 @@ Copia [`.env.example`](.env.example) y configura en Vercel:
 
 ## Setup Notion
 
-1. Crea una integración y comparte las páginas HR con ella.
-2. El knowledge viene de `HR_PAGE_IDS` en [`lib/notion.ts`](lib/notion.ts).
+1. Crea una integración y comparte las páginas HR con ella (solo esas páginas deben tener acceso).
+2. El knowledge se descubre automáticamente vía Notion Search API en [`lib/notion.ts`](lib/notion.ts); no hay lista de IDs en código.
 3. Opcional: databases para requests (`NOTION_HR_REQUESTS_ID`) e interactions log.
 
 ## Desarrollo local

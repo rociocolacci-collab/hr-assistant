@@ -30,6 +30,12 @@ export async function handleDirectMessage(event: GenericMessageEvent, botUserId:
     return;
   }
 
+  if (question.toLowerCase() === 'debug test') {
+    const { sendDebugTest } = await import('./debug');
+    await sendDebugTest(channel, threadTs);
+    return;
+  }
+
   console.log('Processing DM:', question);
 
   const initialMessage = await client.chat.postMessage({

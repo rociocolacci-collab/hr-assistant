@@ -1,7 +1,6 @@
 import { generateText, type CoreMessage } from 'ai';
 import { client, getThread } from './slack-utils';
 import { buildKnowledgeText } from './notion';
-import { generateResponse } from './generate-response';
 import { model } from './model';
 import { generateResponse } from './generate-response';
 

@@ -124,6 +124,10 @@ export async function getThread(
         content = content.replace(new RegExp(`<@${botUserId}>\\s*`, 'g'), '').trim();
       }
 
+      if (isBot && /^(Thinking\.\.\.|Tuve un problema)/i.test(content.trim())) {
+        return null;
+      }
+
       return {
         role: isBot ? 'assistant' : 'user',
         content,

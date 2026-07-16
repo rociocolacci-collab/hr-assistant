@@ -84,8 +84,9 @@ export async function handleDirectMessage(event: GenericMessageEvent, botUserId:
     }
 
     console.error('Error handling DM:', error instanceof Error ? error.stack ?? error : error);
+    const detail = error instanceof Error ? error.message.slice(0, 120) : String(error);
     await updateMessage(
-      'Tuve un problema procesando tu pregunta. Por favor intentá de nuevo o contactá a People & Culture.'
+      `Tuve un problema procesando tu pregunta. Por favor intentá de nuevo o contactá a People & Culture.\n_${detail}_`
     );
   }
 }

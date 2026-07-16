@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { client } from './slack-utils';
 import { buildKnowledgeText } from './notion';
+import { generateResponse } from './generate-response';
 import { model } from './model';
 
 function errMsg(err: unknown): string {
@@ -34,6 +35,15 @@ export async function sendDebugTest(channel: string, threadTs: string): Promise<
     lines.push(`3. Claude API: ✅ ("${text.trim().slice(0, 30)}")`);
   } catch (err) {
     lines.push(`3. Claude API: ❌ ${errMsg(err)}`);
+  }
+
+  try {
+    const start = Date.now();
+    const answer = await generateResponse([{ role: 'user', content: 'who is zain?' }]);
+    const secs = Math.round((Date.now() - start) / 100) / 10;
+    lines.push(`4. Full Q&A: ✅ (${answer.length} chars in ${secs}s)`);
+  } catch (err) {
+    lines.push(`4. Full Q&A: ❌ ${errMsg(err)}`);
   }
 
   await client.chat.postMessage({

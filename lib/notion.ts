@@ -11,8 +11,10 @@ const NOTION_DB_IDS = {
 const KNOWLEDGE_TTL_MS = 60 * 60 * 1000; // 1h
 const PAGE_FETCH_CONCURRENCY = 6;
 const MAX_KNOWLEDGE_CHARS = 120_000;
+const PROMPT_KNOWLEDGE_CHARS = 35_000;
+const MIN_PROMPT_PAGES = 3;
 
-let knowledgeCache: { text: string; expiresAt: number } | null = null;
+let pagesCache: { pages: HRPage[]; expiresAt: number } | null = null;
 
 function normalizeNotionId(id: string): string {
   return id.replace(/-/g, '');
@@ -200,6 +202,102 @@ async function discoverHRPageIds(): Promise<string[]> {
   return pageIds;
 }
 
+const STOPWORDS = new Set([
+  'who',
+  'what',
+  'how',
+  'when',
+  'where',
+  'why',
+  'is',
+  'are',
+  'the',
+  'and',
+  'for',
+  'can',
+  'does',
+  'do',
+  'about',
+]);
+
+const TOPIC_BOOSTS: [RegExp, RegExp, number][] = [
+  [/who is|leadership|ceo|cto|executive|zain|founder|president/i, /leadership|senior|executive|team/i, 40],
+  [/pto|vacation|time off|leave|sick|holiday/i, /pto|vacation|leave|time off|holiday|sick/i, 40],
+  [/relocation|relocate|move/i, /relocation|relocate/i, 40],
+  [/career|promotion|level|path/i, /career|path|level/i, 40],
+  [/bamboo|payroll|benefits/i, /bamboo|payroll|benefit/i, 40],
+  [/engagement|qcs|quarterly/i, /engagement|quarterly|qcs/i, 40],
+];
+
+function queryTerms(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((word) => word.length > 2 && !STOPWORDS.has(word));
+}
+
+function scorePage(page: HRPage, query: string): number {
+  const terms = queryTerms(query);
+  const haystack = `${page.title}\n${page.content}`.toLowerCase();
+  let score = 0;
+
+  for (const term of terms) {
+    if (page.title.toLowerCase().includes(term)) {
+      score += 12;
+    }
+    if (haystack.includes(term)) {
+      score += 3;
+    }
+  }
+
+  for (const [queryPattern, pagePattern, boost] of TOPIC_BOOSTS) {
+    if (queryPattern.test(query) && pagePattern.test(haystack)) {
+      score += boost;
+    }
+  }
+
+  return score;
+}
+
+function formatPageSection(page: HRPage): string {
+  return `=== ${page.title.toUpperCase()} ===\n${page.content}\nURL: ${page.url}`;
+}
+
+function buildTextFromPages(pages: HRPage[], maxChars: number): string {
+  const sections: string[] = [];
+  let totalChars = 0;
+
+  for (const page of pages) {
+    const section = formatPageSection(page);
+    if (totalChars + section.length > maxChars && sections.length >= MIN_PROMPT_PAGES) {
+      break;
+    }
+    sections.push(section);
+    totalChars += section.length;
+  }
+
+  return sections.join('\n\n');
+}
+
+async function getHRPages(): Promise<HRPage[]> {
+  if (pagesCache && Date.now() < pagesCache.expiresAt) {
+    return pagesCache.pages;
+  }
+
+  const pages = await fetchHRKnowledge();
+  if (pages.length === 0) {
+    pagesCache = null;
+    return [];
+  }
+
+  pagesCache = {
+    pages,
+    expiresAt: Date.now() + KNOWLEDGE_TTL_MS,
+  };
+
+  return pages;
+}
+
 export async function fetchHRKnowledge(): Promise<HRPage[]> {
   const pageIds = await discoverHRPageIds();
   console.log(`Notion search discovered ${pageIds.length} pages`);
@@ -241,39 +339,51 @@ export async function fetchHRKnowledge(): Promise<HRPage[]> {
 }
 
 export async function buildKnowledgeText(): Promise<string> {
-  if (knowledgeCache && Date.now() < knowledgeCache.expiresAt) {
-    return knowledgeCache.text;
-  }
-
-  const hrPages = await fetchHRKnowledge();
-
-  if (hrPages.length === 0) {
-    knowledgeCache = null;
+  const pages = await getHRPages();
+  if (pages.length === 0) {
     return '';
   }
 
-  const sections: string[] = [];
+  const text = buildTextFromPages(pages, MAX_KNOWLEDGE_CHARS);
+  console.log(`Knowledge text size: ${text.length} chars from ${pages.length} cached pages`);
+  return text;
+}
+
+export async function buildKnowledgeTextForQuery(query: string): Promise<string> {
+  const pages = await getHRPages();
+  if (pages.length === 0) {
+    return '';
+  }
+
+  const ranked = pages
+    .map((page) => ({ page, score: scorePage(page, query) }))
+    .sort((a, b) => b.score - a.score);
+
+  const selected: HRPage[] = [];
   let totalChars = 0;
 
-  for (const page of hrPages) {
-    const section = `=== ${page.title.toUpperCase()} ===\n${page.content}\nURL: ${page.url}`;
-    if (totalChars + section.length > MAX_KNOWLEDGE_CHARS) {
-      console.warn(
-        `Knowledge truncated at ${sections.length} pages (${totalChars} chars) to stay within limit`
-      );
+  for (const { page, score } of ranked) {
+    const section = formatPageSection(page);
+    if (score === 0 && selected.length >= MIN_PROMPT_PAGES) {
+      continue;
+    }
+    if (totalChars + section.length > PROMPT_KNOWLEDGE_CHARS && selected.length >= MIN_PROMPT_PAGES) {
       break;
     }
-    sections.push(section);
+    selected.push(page);
     totalChars += section.length;
   }
 
-  const text = sections.join('\n\n');
-  console.log(`Knowledge text size: ${text.length} chars from ${sections.length} pages`);
+  if (selected.length === 0) {
+    selected.push(...pages.slice(0, MIN_PROMPT_PAGES));
+  }
 
-  knowledgeCache = {
-    text,
-    expiresAt: Date.now() + KNOWLEDGE_TTL_MS,
-  };
+  const titles = pages.map((page) => page.title).join(', ');
+  const text = `AVAILABLE TOPICS: ${titles}\n\n${buildTextFromPages(selected, PROMPT_KNOWLEDGE_CHARS)}`;
+
+  console.log(
+    `Prompt knowledge for "${query.slice(0, 60)}": ${text.length} chars from ${selected.length}/${pages.length} pages`
+  );
 
   return text;
 }

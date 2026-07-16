@@ -1,7 +1,28 @@
 import { generateText, type CoreMessage } from 'ai';
-import { buildKnowledgeText } from './notion';
+import { buildKnowledgeTextForQuery } from './notion';
 import { model } from './model';
 import { formatSlackMrkdwn } from './slack-blocks';
+
+const SKIP_ASSISTANT_TEXT = /^(Thinking\.\.\.|Tuve un problema)/i;
+
+function getLastUserQuery(messages: CoreMessage[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role === 'user' && typeof message.content === 'string' && message.content.trim()) {
+      return message.content.trim();
+    }
+  }
+  return '';
+}
+
+function sanitizeMessages(messages: CoreMessage[]): CoreMessage[] {
+  return messages.filter((message) => {
+    if (message.role !== 'assistant' || typeof message.content !== 'string') {
+      return true;
+    }
+    return !SKIP_ASSISTANT_TEXT.test(message.content.trim());
+  });
+}
 
 function buildSystemPromptPrefix(today: string): string {
   return `You are the People Assistant at dotCMS. Give concrete, to-the-point answers — like a helpful colleague replying fast on Slack, not a manual. Empathy goes in the tone, concreteness goes in the content.
@@ -52,27 +73,30 @@ Slack formatting rules:
 - Links as plain URLs`;
 
 export async function generateResponse(messages: CoreMessage[]): Promise<string> {
-  const knowledgeText = await buildKnowledgeText();
+  const query = getLastUserQuery(messages) || 'general HR policy';
+  const knowledgeText = await buildKnowledgeTextForQuery(query);
 
   if (!knowledgeText) {
     throw new Error('NOTION_EMPTY');
   }
 
   const today = new Date().toISOString().slice(0, 10);
+  const conversation = sanitizeMessages(messages);
 
   try {
     const { text } = await generateText({
       model,
       maxTokens: 350,
       system: `${buildSystemPromptPrefix(today)}${knowledgeText}${SYSTEM_PROMPT_SUFFIX}`,
-      messages,
+      messages: conversation,
     });
 
     return formatSlackMrkdwn(text || 'I encountered an error. Please contact HR directly.');
   } catch (error) {
     console.error('generateText failed', {
+      query: query.slice(0, 120),
       knowledgeChars: knowledgeText.length,
-      messageCount: messages.length,
+      messageCount: conversation.length,
       error: error instanceof Error ? error.message : error,
     });
     throw error;

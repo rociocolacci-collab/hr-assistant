@@ -60,12 +60,21 @@ export async function generateResponse(messages: CoreMessage[]): Promise<string>
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const { text } = await generateText({
-    model,
-    maxTokens: 350,
-    system: `${buildSystemPromptPrefix(today)}${knowledgeText}${SYSTEM_PROMPT_SUFFIX}`,
-    messages,
-  });
+  try {
+    const { text } = await generateText({
+      model,
+      maxTokens: 350,
+      system: `${buildSystemPromptPrefix(today)}${knowledgeText}${SYSTEM_PROMPT_SUFFIX}`,
+      messages,
+    });
 
-  return formatSlackMrkdwn(text || 'I encountered an error. Please contact HR directly.');
+    return formatSlackMrkdwn(text || 'I encountered an error. Please contact HR directly.');
+  } catch (error) {
+    console.error('generateText failed', {
+      knowledgeChars: knowledgeText.length,
+      messageCount: messages.length,
+      error: error instanceof Error ? error.message : error,
+    });
+    throw error;
+  }
 }

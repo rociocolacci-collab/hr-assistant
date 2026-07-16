@@ -57,7 +57,12 @@ export async function handleNewAppMention(event: AppMentionEvent, botUserId: str
 
     const answer = await generateResponse(messages);
 
-    await updateMessage(answer, answerBlocks(answer));
+    try {
+      await updateMessage(answer, answerBlocks(answer));
+    } catch (updateError) {
+      console.error('Block update failed, falling back to plain text:', updateError);
+      await updateMessage(answer);
+    }
 
     await logInteraction({
       userId: event.user ?? 'unknown',
@@ -74,7 +79,7 @@ export async function handleNewAppMention(event: AppMentionEvent, botUserId: str
       return;
     }
 
-    console.error('Error handling app mention:', error);
+    console.error('Error handling app mention:', error instanceof Error ? error.stack ?? error : error);
     await updateMessage(
       'Tuve un problema procesando tu pregunta. Por favor intentá de nuevo o contactá a People & Culture.'
     );

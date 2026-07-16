@@ -9,8 +9,52 @@ const NOTION_DB_IDS = {
 };
 
 const KNOWLEDGE_TTL_MS = 60 * 60 * 1000; // 1h
+const PAGE_FETCH_CONCURRENCY = 6;
+const MAX_KNOWLEDGE_CHARS = 120_000;
 
 let knowledgeCache: { text: string; expiresAt: number } | null = null;
+
+function normalizeNotionId(id: string): string {
+  return id.replace(/-/g, '');
+}
+
+function isExcludedDatabasePage(
+  pageMeta: Awaited<ReturnType<typeof notionClient.pages.retrieve>>
+): boolean {
+  if (!('parent' in pageMeta) || pageMeta.parent.type !== 'database_id') {
+    return false;
+  }
+
+  const parentId = normalizeNotionId(pageMeta.parent.database_id);
+  const excluded = [NOTION_DB_IDS.HR_REQUESTS, NOTION_DB_IDS.INTERACTIONS_LOG]
+    .filter(Boolean)
+    .map((id) => normalizeNotionId(id as string));
+
+  return excluded.includes(parentId);
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R | null>
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const current = index++;
+      const result = await fn(items[current]);
+      if (result !== null) {
+        results.push(result);
+      }
+    }
+  }
+
+  const workers = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return results;
+}
 
 export type HRPage = {
   title: string;
@@ -71,22 +115,40 @@ function extractTextFromBlocks(blocks: NotionBlock[]): string[] {
   return lines;
 }
 
-async function fetchPageBlocks(pageId: string): Promise<NotionBlock[]> {
+async function fetchBlockChildren(blockId: string, depth = 0): Promise<NotionBlock[]> {
+  if (depth > 5) {
+    return [];
+  }
+
   const blocks: NotionBlock[] = [];
   let cursor: string | undefined;
 
   do {
     const res = await notionClient.blocks.children.list({
-      block_id: pageId,
+      block_id: blockId,
       start_cursor: cursor,
       page_size: 100,
     });
 
-    blocks.push(...(res.results as NotionBlock[]));
+    for (const block of res.results as NotionBlock[]) {
+      if (
+        block.has_children &&
+        block.type !== 'child_page' &&
+        block.type !== 'child_database'
+      ) {
+        block.children = await fetchBlockChildren(block.id, depth + 1);
+      }
+      blocks.push(block);
+    }
+
     cursor = res.has_more ? res.next_cursor ?? undefined : undefined;
   } while (cursor);
 
   return blocks;
+}
+
+async function fetchPageBlocks(pageId: string): Promise<NotionBlock[]> {
+  return fetchBlockChildren(pageId);
 }
 
 function getPageTitle(pageMeta: Awaited<ReturnType<typeof notionClient.pages.retrieve>>): string {
@@ -101,6 +163,12 @@ function getPageTitle(pageMeta: Awaited<ReturnType<typeof notionClient.pages.ret
 
   for (const key of ['title', 'Page', 'Name']) {
     const prop = props[key];
+    if (prop?.type === 'title' && prop.title?.[0]?.plain_text) {
+      return prop.title[0].plain_text;
+    }
+  }
+
+  for (const prop of Object.values(props)) {
     if (prop?.type === 'title' && prop.title?.[0]?.plain_text) {
       return prop.title[0].plain_text;
     }
@@ -134,31 +202,41 @@ async function discoverHRPageIds(): Promise<string[]> {
 
 export async function fetchHRKnowledge(): Promise<HRPage[]> {
   const pageIds = await discoverHRPageIds();
-  const pages: HRPage[] = [];
+  console.log(`Notion search discovered ${pageIds.length} pages`);
 
-  await Promise.all(
-    pageIds.map(async (pageId) => {
-      try {
-        const [pageMeta, blocks] = await Promise.all([
-          notionClient.pages.retrieve({ page_id: pageId }),
-          fetchPageBlocks(pageId),
-        ]);
+  const pages = await mapWithConcurrency(pageIds, PAGE_FETCH_CONCURRENCY, async (pageId) => {
+    try {
+      const pageMeta = await notionClient.pages.retrieve({ page_id: pageId });
 
-        const title = getPageTitle(pageMeta);
-        const content = extractTextFromBlocks(blocks).join('\n').trim();
-
-        pages.push({
-          title,
-          content,
-          url: `https://www.notion.so/${pageId}`,
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error(`Notion page ${pageId} error:`, message);
+      if ('archived' in pageMeta && pageMeta.archived) {
+        return null;
       }
-    })
-  );
 
+      if (isExcludedDatabasePage(pageMeta)) {
+        return null;
+      }
+
+      const blocks = await fetchPageBlocks(pageId);
+      const title = getPageTitle(pageMeta);
+      const content = extractTextFromBlocks(blocks).join('\n').trim();
+
+      if (!content) {
+        return null;
+      }
+
+      return {
+        title,
+        content,
+        url: `https://www.notion.so/${pageId.replace(/-/g, '')}`,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`Notion page ${pageId} error:`, message);
+      return null;
+    }
+  });
+
+  console.log(`Notion knowledge loaded ${pages.length} pages with content`);
   return pages;
 }
 
@@ -174,9 +252,23 @@ export async function buildKnowledgeText(): Promise<string> {
     return '';
   }
 
-  const text = hrPages
-    .map((p) => `=== ${p.title.toUpperCase()} ===\n${p.content}\nURL: ${p.url}`)
-    .join('\n\n');
+  const sections: string[] = [];
+  let totalChars = 0;
+
+  for (const page of hrPages) {
+    const section = `=== ${page.title.toUpperCase()} ===\n${page.content}\nURL: ${page.url}`;
+    if (totalChars + section.length > MAX_KNOWLEDGE_CHARS) {
+      console.warn(
+        `Knowledge truncated at ${sections.length} pages (${totalChars} chars) to stay within limit`
+      );
+      break;
+    }
+    sections.push(section);
+    totalChars += section.length;
+  }
+
+  const text = sections.join('\n\n');
+  console.log(`Knowledge text size: ${text.length} chars from ${sections.length} pages`);
 
   knowledgeCache = {
     text,

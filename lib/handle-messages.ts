@@ -55,7 +55,12 @@ export async function handleDirectMessage(event: GenericMessageEvent, botUserId:
     const messages = await getThread(channel, threadTs, botUserId);
     const answer = await generateResponse(messages);
 
-    await updateMessage(answer, answerBlocks(answer));
+    try {
+      await updateMessage(answer, answerBlocks(answer));
+    } catch (updateError) {
+      console.error('Block update failed, falling back to plain text:', updateError);
+      await updateMessage(answer);
+    }
 
     await logInteraction({
       userId: event.user ?? 'unknown',
@@ -72,7 +77,7 @@ export async function handleDirectMessage(event: GenericMessageEvent, botUserId:
       return;
     }
 
-    console.error('Error handling DM:', error);
+    console.error('Error handling DM:', error instanceof Error ? error.stack ?? error : error);
     await updateMessage(
       'Tuve un problema procesando tu pregunta. Por favor intentá de nuevo o contactá a People & Culture.'
     );

@@ -334,7 +334,7 @@ const HR_TEAM = {
   sofi: {
     name: 'Sofi Mendieta',
     idEnv: 'SLACK_SOFI_ID',
-    topics: 'Onboarding · Payroll · Internal Activities · Quarterly Conversations · People Processes',
+    topics: 'Onboarding · Payroll · Internal Activities · Quarterly Conversations',
   },
   rocio: {
     name: 'Rocío Colacci',
